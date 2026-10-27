@@ -5,7 +5,7 @@ use std::process::Command;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use serde::Serialize;
-use sysinfo::{Pid, System, ProcessesToUpdate};
+use sysinfo::{Pid, ProcessesToUpdate, System};
 
 use crate::state::{AppState, ServerStatus};
 
@@ -20,6 +20,10 @@ pub struct Metrics {
     pub cpu_percent: f32,
     /// 进程内存工作集（字节）
     pub mem_bytes: u64,
+    /// 系统总内存（字节）
+    pub mem_total_bytes: u64,
+    /// 进程内存占系统总内存比例（%）
+    pub mem_percent: f32,
     pub gpu_util_percent: Option<f32>,
     pub gpu_mem_used_bytes: Option<u64>,
     pub gpu_mem_total_bytes: Option<u64>,
@@ -106,6 +110,8 @@ pub fn get_metrics_cmd(state: tauri::State<'_, Arc<AppState>>) -> Metrics {
             pid: None,
             cpu_percent: 0.0,
             mem_bytes: 0,
+            mem_total_bytes: 0,
+            mem_percent: 0.0,
             gpu_util_percent: None,
             gpu_mem_used_bytes: None,
             gpu_mem_total_bytes: None,
@@ -117,6 +123,7 @@ pub fn get_metrics_cmd(state: tauri::State<'_, Arc<AppState>>) -> Metrics {
 
     let mut cpu_percent = 0.0;
     let mut mem_bytes = 0;
+    let mut mem_total_bytes = 0;
     if let Some(pid) = pid {
         let mut sys = system().lock().unwrap();
         sys.refresh_processes(ProcessesToUpdate::Some(&[Pid::from_u32(pid)]), true);
@@ -124,7 +131,13 @@ pub fn get_metrics_cmd(state: tauri::State<'_, Arc<AppState>>) -> Metrics {
             cpu_percent = proc.cpu_usage();
             mem_bytes = proc.memory();
         }
+        mem_total_bytes = sys.total_memory();
     }
+    let mem_percent = if mem_total_bytes > 0 {
+        mem_bytes as f32 / mem_total_bytes as f32 * 100.0
+    } else {
+        0.0
+    };
 
     let gpu = gpu_info();
     Metrics {
@@ -132,6 +145,8 @@ pub fn get_metrics_cmd(state: tauri::State<'_, Arc<AppState>>) -> Metrics {
         pid,
         cpu_percent,
         mem_bytes,
+        mem_total_bytes,
+        mem_percent,
         gpu_util_percent: gpu.util,
         gpu_mem_used_bytes: gpu.mem_used,
         gpu_mem_total_bytes: gpu.mem_total,

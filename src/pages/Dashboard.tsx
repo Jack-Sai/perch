@@ -53,10 +53,6 @@ interface Sample {
   gpuTemp: number;
 }
 
-const CPU_ALERT = 90;
-const GPU_ALERT = 90;
-const TEMP_ALERT = 85;
-
 function MetricCard({
   icon: Icon,
   label,
@@ -119,6 +115,10 @@ export function Dashboard() {
   const kind = statusKind(status);
   const sampleSeconds = cfg?.global.monitor_sample_seconds ?? 1;
   const windowMinutes = cfg?.global.monitor_window_minutes ?? 5;
+  const cpuAlert = cfg?.global.alert_cpu_percent ?? 90;
+  const memAlert = cfg?.global.alert_mem_percent ?? 90;
+  const gpuAlert = cfg?.global.alert_gpu_util_percent ?? 90;
+  const tempAlert = cfg?.global.alert_gpu_temp_c ?? 85;
 
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [samples, setSamples] = useState<Sample[]>([]);
@@ -294,12 +294,14 @@ export function Dashboard() {
   }, [kind, status, logLines]);
 
   const alerts: string[] = [];
-  if (metrics?.cpu_percent && metrics.cpu_percent >= CPU_ALERT)
+  if (metrics && metrics.cpu_percent >= cpuAlert)
     alerts.push(`${t("dashboard.cpu")} ${formatPercent(metrics.cpu_percent)}`);
-  if (metrics?.gpu_util_percent && metrics.gpu_util_percent >= GPU_ALERT)
+  if (metrics && metrics.mem_percent >= memAlert)
+    alerts.push(`${t("dashboard.memory")} ${formatPercent(metrics.mem_percent)}`);
+  if (metrics?.gpu_util_percent != null && metrics.gpu_util_percent >= gpuAlert)
     alerts.push(`${t("dashboard.gpuUtil")} ${formatPercent(metrics.gpu_util_percent)}`);
-  if (metrics?.gpu_temp_c && metrics.gpu_temp_c >= TEMP_ALERT)
-    alerts.push(`${t("dashboard.gpuTemp")} ${metrics.gpu_temp_c}°C`);
+  if (metrics?.gpu_temp_c != null && metrics.gpu_temp_c >= tempAlert)
+    alerts.push(`${t("dashboard.gpuTemp")} ${metrics.gpu_temp_c.toFixed(0)}°C`);
 
   const chartData = useMemo(() => {
     if (samples.length <= 500) {
@@ -420,7 +422,7 @@ export function Dashboard() {
           label={t("dashboard.cpu")}
           value={metrics ? formatPercent(metrics.cpu_percent) : "—"}
           sub={t("dashboard.sampleInterval", { n: sampleSeconds })}
-          tone={metrics?.cpu_percent && metrics.cpu_percent >= CPU_ALERT ? "warning" : "default"}
+          tone={metrics && metrics.cpu_percent >= cpuAlert ? "warning" : "default"}
         />
         <MetricCard
           icon={HardDrive}
@@ -458,7 +460,7 @@ export function Dashboard() {
               : metrics?.gpu_name ?? t("dashboard.cpuOnly")
           }
           tone={
-            metrics?.gpu_util_percent && metrics.gpu_util_percent >= GPU_ALERT
+            metrics?.gpu_util_percent != null && metrics.gpu_util_percent >= gpuAlert
               ? "warning"
               : "default"
           }

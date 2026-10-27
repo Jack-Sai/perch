@@ -51,30 +51,35 @@ fn notify(app: &tauri::AppHandle, body: &str) {
 
 /// 启动成功后进入运行期守护，检测运行中崩溃。
 fn spawn_runtime_watcher(app: tauri::AppHandle, state: Arc<AppState>) {
-    std::thread::spawn(move || loop {
-        std::thread::sleep(Duration::from_millis(1000));
-        let mut inner = state.inner.lock().unwrap();
-        if !matches!(inner.status, ServerStatus::Running) {
-            return;
-        }
-        if let Some(child) = inner.child.as_mut() {
-            match child.try_wait() {
-                Ok(Some(status)) => {
-                    let code = status.code().map(|c| c.to_string()).unwrap_or_else(|| "?".into());
-                    let msg = format!("运行中意外退出（退出码 {code}）");
-                    inner.status = ServerStatus::Error(msg.clone());
-                    inner.child = None;
-                    inner.pid = None;
-                    drop(inner);
-                    notify(&app, &msg);
-                    emit_status(&app, &state);
-                    return;
-                }
-                Ok(None) => {}
-                Err(_) => {}
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(Duration::from_millis(1000));
+            let mut inner = state.inner.lock().unwrap();
+            if !matches!(inner.status, ServerStatus::Running) {
+                return;
             }
-        } else {
-            return;
+            if let Some(child) = inner.child.as_mut() {
+                match child.try_wait() {
+                    Ok(Some(status)) => {
+                        let code = status
+                            .code()
+                            .map(|c| c.to_string())
+                            .unwrap_or_else(|| "?".into());
+                        let msg = format!("运行中意外退出（退出码 {code}）");
+                        inner.status = ServerStatus::Error(msg.clone());
+                        inner.child = None;
+                        inner.pid = None;
+                        drop(inner);
+                        notify(&app, &msg);
+                        emit_status(&app, &state);
+                        return;
+                    }
+                    Ok(None) => {}
+                    Err(_) => {}
+                }
+            } else {
+                return;
+            }
         }
     });
 }

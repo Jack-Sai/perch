@@ -12,6 +12,10 @@ export interface GlobalConfig {
   api_port: number;
   api_token: string;
   first_run_done: boolean;
+  alert_cpu_percent: number;
+  alert_mem_percent: number;
+  alert_gpu_util_percent: number;
+  alert_gpu_temp_c: number;
 }
 
 export interface Profile {
@@ -75,6 +79,8 @@ export interface Metrics {
   pid: number | null;
   cpu_percent: number;
   mem_bytes: number;
+  mem_total_bytes: number;
+  mem_percent: number;
   gpu_util_percent: number | null;
   gpu_mem_used_bytes: number | null;
   gpu_mem_total_bytes: number | null;

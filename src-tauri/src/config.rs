@@ -41,6 +41,14 @@ pub struct GlobalConfig {
     pub api_token: String,
     /// 首次使用向导是否已完成
     pub first_run_done: bool,
+    /// 进程 CPU 告警阈值（%）
+    pub alert_cpu_percent: u32,
+    /// 进程内存占系统内存告警阈值（%）
+    pub alert_mem_percent: u32,
+    /// GPU 利用率告警阈值（%）
+    pub alert_gpu_util_percent: u32,
+    /// GPU 温度告警阈值（摄氏度）
+    pub alert_gpu_temp_c: u32,
 }
 
 impl Default for GlobalConfig {
@@ -59,6 +67,10 @@ impl Default for GlobalConfig {
             api_port: 3999,
             api_token: String::new(),
             first_run_done: false,
+            alert_cpu_percent: 90,
+            alert_mem_percent: 90,
+            alert_gpu_util_percent: 90,
+            alert_gpu_temp_c: 85,
         }
     }
 }
@@ -265,7 +277,8 @@ pub fn export_config_cmd(path: String, mask_model: bool) -> Result<(), String> {
 #[tauri::command]
 pub fn import_config_cmd(path: String) -> Result<AppConfig, String> {
     let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let imported: AppConfig = toml::from_str(&content).map_err(|e| format!("TOML 解析失败：{e}"))?;
+    let imported: AppConfig =
+        toml::from_str(&content).map_err(|e| format!("TOML 解析失败：{e}"))?;
     if imported.profiles.is_empty() {
         return Err("导入文件中没有任何配置方案".into());
     }

@@ -280,6 +280,55 @@ export function Settings() {
                 }
               />
             </div>
+            <div className="sm:col-span-2 mt-1 text-xs font-medium text-muted-foreground">
+              {t("settings.thresholds")}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="alert-cpu">{t("settings.alertCpu")}</Label>
+              <Input
+                id="alert-cpu"
+                type="number"
+                min={1}
+                max={100}
+                value={g.alert_cpu_percent}
+                onChange={(e) => updateGlobal({ alert_cpu_percent: Number(e.target.value) || 90 })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="alert-mem">{t("settings.alertMem")}</Label>
+              <Input
+                id="alert-mem"
+                type="number"
+                min={1}
+                max={100}
+                value={g.alert_mem_percent}
+                onChange={(e) => updateGlobal({ alert_mem_percent: Number(e.target.value) || 90 })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="alert-gpu">{t("settings.alertGpu")}</Label>
+              <Input
+                id="alert-gpu"
+                type="number"
+                min={1}
+                max={100}
+                value={g.alert_gpu_util_percent}
+                onChange={(e) =>
+                  updateGlobal({ alert_gpu_util_percent: Number(e.target.value) || 90 })
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="alert-temp">{t("settings.alertTemp")}</Label>
+              <Input
+                id="alert-temp"
+                type="number"
+                min={1}
+                max={120}
+                value={g.alert_gpu_temp_c}
+                onChange={(e) => updateGlobal({ alert_gpu_temp_c: Number(e.target.value) || 85 })}
+              />
+            </div>
           </CardContent>
         </Card>
 
