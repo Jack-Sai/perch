@@ -2,6 +2,7 @@ mod binary;
 mod config;
 mod monitor;
 mod params;
+mod port;
 mod process;
 mod single_instance;
 mod state;
@@ -23,6 +24,12 @@ pub fn run() {
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(state.clone())
         .invoke_handler(tauri::generate_handler![
             config::load_config_cmd,
@@ -32,6 +39,10 @@ pub fn run() {
             config::set_last_profile,
             binary::detect_binary_cmd,
             binary::resolve_binary_cmd,
+            binary::inspect_binary_cmd,
+            binary::rescan_help_cmd,
+            port::check_port_cmd,
+            port::find_free_port_cmd,
             params::build_command_cmd,
             process::start_server_cmd,
             process::stop_server_cmd,

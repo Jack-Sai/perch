@@ -304,6 +304,42 @@ pub fn resolve_binary_cmd(input: String) -> Result<BinaryInfo, String> {
     Ok(info)
 }
 
+/// 读取当前配置中已保存的二进制信息（若未配置返回 None）。
+#[tauri::command]
+pub fn inspect_binary_cmd() -> Result<Option<BinaryInfo>, String> {
+    let cfg = config::load_config()?;
+    if cfg.global.binary_path.is_empty() {
+        return Ok(None);
+    }
+    let exe = Path::new(&cfg.global.binary_path);
+    if !exe.is_file() {
+        return Err(format!("llama-server 不存在：{}", cfg.global.binary_path));
+    }
+    Ok(Some(resolve_and_build(exe)?))
+}
+
+/// 重新扫描当前二进制的 --help；force=true 时跳过缓存。
+#[tauri::command]
+pub fn rescan_help_cmd(force: bool) -> Result<BinaryInfo, String> {
+    let cfg = config::load_config()?;
+    if cfg.global.binary_path.is_empty() {
+        return Err("尚未指定 llama-server 路径".into());
+    }
+    let exe = Path::new(&cfg.global.binary_path);
+    if !exe.is_file() {
+        return Err(format!("llama-server 不存在：{}", cfg.global.binary_path));
+    }
+    let backend = identify_backend(exe);
+    let version = get_version(exe);
+    let help_args = scan_help(exe, force).unwrap_or_default();
+    Ok(BinaryInfo {
+        path: exe.to_string_lossy().to_string(),
+        backend,
+        version,
+        help_args,
+    })
+}
+
 fn resolve_and_build(exe: &Path) -> Result<BinaryInfo, String> {
     let backend = identify_backend(exe);
     let version = get_version(exe);
