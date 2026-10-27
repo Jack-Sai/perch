@@ -39,6 +39,7 @@ export const api = {
   stopServer: () => invoke<ServerStatus>("stop_server_cmd"),
   getServerStatus: () => invoke<ServerStatus>("get_server_status_cmd"),
   readServerLog: (tail: number) => invoke<string[]>("read_server_log_cmd", { tail }),
+  exportServerLog: (path: string) => invoke<void>("export_server_log_cmd", { path }),
   getMetrics: () => invoke<Metrics>("get_metrics_cmd"),
 
   checkPort: (port: number) => invoke<PortStatus>("check_port_cmd", { port }),

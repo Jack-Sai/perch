@@ -79,6 +79,8 @@ const zh: Dict = {
   "dashboard.exportJson": "导出 JSON",
   "dashboard.exported": "监控数据已导出",
   "dashboard.exportFailed": "导出失败",
+  "dashboard.exportLog": "导出日志",
+  "dashboard.logExported": "日志已导出",
   "dashboard.startHint": "配置就绪后点击「启动」",
   "dashboard.healthChecking": "正在等待 /health 响应…",
 
@@ -182,6 +184,7 @@ const zh: Dict = {
   "settings.alertMem": "内存占比（%）",
   "settings.alertGpu": "GPU 利用率（%）",
   "settings.alertTemp": "GPU 温度（°C）",
+  "settings.logRetention": "日志保留天数（0=永久）",
   "settings.api": "本地 API（只读）",
   "settings.apiEnable": "启用本地 API",
   "settings.apiPort": "API 端口",
@@ -345,6 +348,8 @@ const en: Dict = {
   "dashboard.exportJson": "Export JSON",
   "dashboard.exported": "Monitoring data exported",
   "dashboard.exportFailed": "Export failed",
+  "dashboard.exportLog": "Export log",
+  "dashboard.logExported": "Log exported",
   "dashboard.startHint": "Configure a profile, then press Start",
   "dashboard.healthChecking": "Waiting for /health response…",
 
@@ -448,6 +453,7 @@ const en: Dict = {
   "settings.alertMem": "Memory share (%)",
   "settings.alertGpu": "GPU utilization (%)",
   "settings.alertTemp": "GPU temperature (°C)",
+  "settings.logRetention": "Log retention days (0 = forever)",
   "settings.api": "Local API (read-only)",
   "settings.apiEnable": "Enable local API",
   "settings.apiPort": "API port",

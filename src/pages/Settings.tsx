@@ -329,6 +329,19 @@ export function Settings() {
               />
             </div>
             <div className="space-y-1.5">
+              <Label htmlFor="log-retention">{t("settings.logRetention")}</Label>
+              <Input
+                id="log-retention"
+                type="number"
+                min={0}
+                max={3650}
+                value={g.log_retention_days}
+                onChange={(e) =>
+                  updateGlobal({ log_retention_days: Math.max(0, Number(e.target.value) || 0) })
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
               <Label htmlFor="alert-temp">{t("settings.alertTemp")}</Label>
               <Input
                 id="alert-temp"

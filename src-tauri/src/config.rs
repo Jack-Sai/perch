@@ -49,6 +49,8 @@ pub struct GlobalConfig {
     pub alert_gpu_util_percent: u32,
     /// GPU 温度告警阈值（摄氏度）
     pub alert_gpu_temp_c: u32,
+    /// 启动日志保留天数（0 表示永久保留）
+    pub log_retention_days: u32,
 }
 
 impl Default for GlobalConfig {
@@ -71,6 +73,7 @@ impl Default for GlobalConfig {
             alert_mem_percent: 90,
             alert_gpu_util_percent: 90,
             alert_gpu_temp_c: 85,
+            log_retention_days: 14,
         }
     }
 }

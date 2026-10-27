@@ -62,6 +62,7 @@ pub fn run() {
             process::stop_server_cmd,
             process::get_server_status_cmd,
             process::read_server_log_cmd,
+            process::export_server_log_cmd,
             monitor::get_metrics_cmd,
             files::save_text_file_cmd,
             recommend::recommend_cmd,
@@ -72,6 +73,8 @@ pub fn run() {
             tray::create_tray(&handle, &setup_state)?;
             single_instance::start_focus_listener(handle);
             api_server::sync_server(Arc::clone(&setup_state));
+            let cfg = config::load_config().unwrap_or_else(|_| config::default_config());
+            process::cleanup_logs(cfg.global.log_retention_days);
             Ok(())
         })
         .build(tauri::generate_context!())

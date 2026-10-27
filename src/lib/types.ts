@@ -16,6 +16,7 @@ export interface GlobalConfig {
   alert_mem_percent: number;
   alert_gpu_util_percent: number;
   alert_gpu_temp_c: number;
+  log_retention_days: number;
 }
 
 export interface Profile {

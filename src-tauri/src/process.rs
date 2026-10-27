@@ -153,7 +153,8 @@ pub fn start_server(
 
     let (args, _warnings, _overridden, _duplicated) = build_args(&profile);
 
-    // 日志文件
+    // 日志文件（启动前清理过期会话日志）
+    cleanup_logs(cfg.global.log_retention_days);
     let logs_dir = config::app_dir().join("logs");
     fs::create_dir_all(&logs_dir).map_err(|e| e.to_string())?;
     let ts = SystemTime::now()
@@ -394,7 +395,8 @@ pub fn read_server_log_cmd(
     let Some(path) = path else {
         return Ok(vec![]);
     };
-    let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+    let content = String::from_utf8_lossy(&bytes);
     let lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
     let n = tail.max(1).min(lines.len());
     Ok(lines
@@ -405,4 +407,50 @@ pub fn read_server_log_cmd(
         .into_iter()
         .rev()
         .collect())
+}
+
+/// 删除超过保留期的会话日志；days=0 表示永久保留。
+pub fn cleanup_logs(days: u32) {
+    if days == 0 {
+        return;
+    }
+    let dir = config::app_dir().join("logs");
+    let Ok(entries) = fs::read_dir(&dir) else {
+        return;
+    };
+    let max_age = std::time::Duration::from_secs(days as u64 * 24 * 3600);
+    let now = SystemTime::now();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("log") {
+            continue;
+        }
+        let Ok(meta) = entry.metadata() else {
+            continue;
+        };
+        let Ok(modified) = meta.modified() else {
+            continue;
+        };
+        if now.duration_since(modified).unwrap_or_default() > max_age {
+            let _ = fs::remove_file(path);
+        }
+    }
+}
+
+/// 将当前会话日志导出到指定路径。
+#[tauri::command]
+pub fn export_server_log_cmd(
+    state: tauri::State<'_, Arc<AppState>>,
+    path: String,
+) -> Result<(), String> {
+    let log_path = {
+        let inner = state.inner.lock().unwrap();
+        inner.log_path.clone()
+    };
+    let Some(log_path) = log_path else {
+        return Err("当前没有日志文件".into());
+    };
+    let bytes = fs::read(&log_path).map_err(|e| format!("读取日志失败: {e}"))?;
+    fs::write(&path, bytes).map_err(|e| format!("写入日志失败: {e}"))?;
+    Ok(())
 }

@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Copy,
   Cpu,
+  Download,
   ExternalLink,
   Gauge,
   HardDrive,
@@ -358,6 +359,21 @@ export function Dashboard() {
     },
     [samples, t, toast],
   );
+
+  const exportLog = useCallback(async () => {
+    try {
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const path = await save({
+        defaultPath: `perch-server-${stamp}.log`,
+        filters: [{ name: "Log", extensions: ["log", "txt"] }],
+      });
+      if (!path) return;
+      await api.exportServerLog(path);
+      toast(t("dashboard.logExported"));
+    } catch (e) {
+      toast(`${t("dashboard.exportFailed")}: ${String(e)}`, "error");
+    }
+  }, [t, toast]);
 
   const chartData = useMemo(() => {
     if (samples.length <= 500) {
@@ -758,15 +774,26 @@ export function Dashboard() {
               )}
             />
           </button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void navigator.clipboard.writeText(logLines.join("\n"))}
-            disabled={logLines.length === 0}
-          >
-            <Copy className="h-3.5 w-3.5" />
-            {t("action.copy")}
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void exportLog()}
+              disabled={logLines.length === 0}
+            >
+              <Download className="h-3.5 w-3.5" />
+              {t("dashboard.exportLog")}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void navigator.clipboard.writeText(logLines.join("\n"))}
+              disabled={logLines.length === 0}
+            >
+              <Copy className="h-3.5 w-3.5" />
+              {t("action.copy")}
+            </Button>
+          </div>
         </CardHeader>
         {logOpen && (
           <CardContent>
