@@ -255,7 +255,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
       try {
-        await api.saveConfig(current!);
+        if (current) {
+          const merged: AppConfig = {
+            ...current,
+            global: { ...current.global, last_profile: target.name },
+            profiles: current.profiles.map((p) =>
+              p.name === target.name ? { ...p, ...target } : p,
+            ),
+          };
+          await api.saveConfig(merged);
+          setCfg(merged);
+        }
         const s = await api.startServer(target);
         setStatus(s);
         setRunningProfile(target.name);
