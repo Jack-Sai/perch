@@ -10,6 +10,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 use tauri::Emitter;
+use tauri_plugin_notification::NotificationExt;
 
 use crate::config::{self, Profile, load_config};
 use crate::params::build_args;
@@ -36,6 +37,46 @@ pub fn visual_for(status: &ServerStatus) -> TrayVisual {
         ServerStatus::Error(_) => TrayVisual::Red,
         _ => TrayVisual::Gray,
     }
+}
+
+/// 发送系统通知（失败时静默）。
+fn notify(app: &tauri::AppHandle, body: &str) {
+    let _ = app
+        .notification()
+        .builder()
+        .title("Perch")
+        .body(body)
+        .show();
+}
+
+/// 启动成功后进入运行期守护，检测运行中崩溃。
+fn spawn_runtime_watcher(app: tauri::AppHandle, state: Arc<AppState>) {
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_millis(1000));
+        let mut inner = state.inner.lock().unwrap();
+        if !matches!(inner.status, ServerStatus::Running) {
+            return;
+        }
+        if let Some(child) = inner.child.as_mut() {
+            match child.try_wait() {
+                Ok(Some(status)) => {
+                    let code = status.code().map(|c| c.to_string()).unwrap_or_else(|| "?".into());
+                    let msg = format!("运行中意外退出（退出码 {code}）");
+                    inner.status = ServerStatus::Error(msg.clone());
+                    inner.child = None;
+                    inner.pid = None;
+                    drop(inner);
+                    notify(&app, &msg);
+                    emit_status(&app, &state);
+                    return;
+                }
+                Ok(None) => {}
+                Err(_) => {}
+            }
+        } else {
+            return;
+        }
+    });
 }
 
 fn emit_status(app: &tauri::AppHandle, state: &AppState) {
@@ -164,11 +205,17 @@ pub fn start_server(
             {
                 let mut inner = state2.inner.lock().unwrap();
                 if let Some(child) = inner.child.as_mut() {
-                    if let Ok(Some(_)) = child.try_wait() {
-                        inner.status = ServerStatus::Error("进程意外退出".into());
+                    if let Ok(Some(status)) = child.try_wait() {
+                        let code = status
+                            .code()
+                            .map(|c| c.to_string())
+                            .unwrap_or_else(|| "?".into());
+                        let msg = format!("启动失败：进程退出（退出码 {code}）");
+                        inner.status = ServerStatus::Error(msg.clone());
                         inner.child = None;
                         inner.pid = None;
                         drop(inner);
+                        notify(&app2, &msg);
                         emit_status(&app2, &state2);
                         return;
                     }
@@ -180,19 +227,21 @@ pub fn start_server(
                     inner.status = ServerStatus::Running;
                 }
                 emit_status(&app2, &state2);
+                spawn_runtime_watcher(app2.clone(), state2.clone());
                 return;
             }
             if start.elapsed().unwrap_or_default().as_secs() >= LAUNCH_TIMEOUT_SECS {
+                let msg = format!("启动超时（>{LAUNCH_TIMEOUT_SECS}s）");
                 {
                     let mut inner = state2.inner.lock().unwrap();
-                    inner.status =
-                        ServerStatus::Error(format!("启动超时（>{LAUNCH_TIMEOUT_SECS}s）"));
+                    inner.status = ServerStatus::Error(msg.clone());
                     if let Some(mut c) = inner.child.take() {
                         let _ = c.kill();
                         let _ = c.wait();
                     }
                     inner.pid = None;
                 }
+                notify(&app2, &msg);
                 emit_status(&app2, &state2);
                 return;
             }
