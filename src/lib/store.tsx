@@ -105,6 +105,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let disposed = false;
     let unlisten: (() => void) | undefined;
+    let unlistenCfg: (() => void) | undefined;
 
     (async () => {
       await reload();
@@ -145,11 +146,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setPid(ev.pid);
         setRunningProfile(ev.running_profile);
       });
+
+      unlistenCfg = await listen("perch-config-changed", () => {
+        void reload();
+      });
     })();
 
     return () => {
       disposed = true;
       unlisten?.();
+      unlistenCfg?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

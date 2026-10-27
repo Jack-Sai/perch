@@ -196,16 +196,22 @@ pub fn load_config_cmd() -> Result<AppConfig, String> {
 #[tauri::command]
 pub fn save_config_cmd(
     cfg: AppConfig,
+    app: tauri::AppHandle,
     state: tauri::State<'_, std::sync::Arc<crate::state::AppState>>,
 ) -> Result<(), String> {
     save_config(&cfg)?;
     crate::api_server::sync_server(std::sync::Arc::clone(&state));
+    crate::tray::refresh(&app, &state);
     Ok(())
 }
 
 /// 新建一套配置方案；同名时报错。
 #[tauri::command]
-pub fn create_profile(name: String) -> Result<AppConfig, String> {
+pub fn create_profile(
+    name: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, std::sync::Arc<crate::state::AppState>>,
+) -> Result<AppConfig, String> {
     let mut cfg = load_config()?;
     if cfg.profiles.iter().any(|p| p.name == name) {
         return Err(format!("已存在同名配置：{name}"));
@@ -214,12 +220,17 @@ pub fn create_profile(name: String) -> Result<AppConfig, String> {
     p.name = name;
     cfg.profiles.push(p);
     save_config(&cfg)?;
+    crate::tray::refresh(&app, &state);
     Ok(cfg)
 }
 
 /// 删除一套配置方案；至少保留一套。
 #[tauri::command]
-pub fn delete_profile(name: String) -> Result<AppConfig, String> {
+pub fn delete_profile(
+    name: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, std::sync::Arc<crate::state::AppState>>,
+) -> Result<AppConfig, String> {
     let mut cfg = load_config()?;
     if cfg.profiles.len() <= 1 {
         return Err("至少保留一套配置".into());
@@ -229,15 +240,21 @@ pub fn delete_profile(name: String) -> Result<AppConfig, String> {
         cfg.global.last_profile = cfg.profiles[0].name.clone();
     }
     save_config(&cfg)?;
+    crate::tray::refresh(&app, &state);
     Ok(cfg)
 }
 
 /// 记录上次使用的配置名。
 #[tauri::command]
-pub fn set_last_profile(name: String) -> Result<AppConfig, String> {
+pub fn set_last_profile(
+    name: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, std::sync::Arc<crate::state::AppState>>,
+) -> Result<AppConfig, String> {
     let mut cfg = load_config()?;
     cfg.global.last_profile = name;
     save_config(&cfg)?;
+    crate::tray::refresh(&app, &state);
     Ok(cfg)
 }
 
@@ -280,7 +297,11 @@ pub fn export_config_cmd(path: String, mask_model: bool) -> Result<(), String> {
 /// 导入配置 TOML，合并到现有配置。同名方案自动追加后缀，避免覆盖。
 /// 返回合并后的完整配置；模型路径为占位符的方案由前端提示重新指定。
 #[tauri::command]
-pub fn import_config_cmd(path: String) -> Result<AppConfig, String> {
+pub fn import_config_cmd(
+    path: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, std::sync::Arc<crate::state::AppState>>,
+) -> Result<AppConfig, String> {
     let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
     let imported: AppConfig =
         toml::from_str(&content).map_err(|e| format!("TOML 解析失败：{e}"))?;
@@ -301,5 +322,7 @@ pub fn import_config_cmd(path: String) -> Result<AppConfig, String> {
         cfg.profiles.push(p);
     }
     save_config(&cfg)?;
+    crate::api_server::sync_server(std::sync::Arc::clone(&state));
+    crate::tray::refresh(&app, &state);
     Ok(cfg)
 }

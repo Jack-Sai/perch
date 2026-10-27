@@ -63,7 +63,7 @@ fn do_start(profile: Option<String>) -> Value {
     if let Some(p) = &profile {
         cmd["profile"] = json!(p);
     }
-    match send(cmd.clone(), 3) {
+    match send(cmd.clone(), 15) {
         Ok(v) => v,
         Err(_) => {
             if let Err(e) = spawn_gui() {
@@ -175,7 +175,7 @@ pub fn try_run(args: &[String]) -> bool {
     }
 
     match cmd.as_deref() {
-        Some("status") => match send(json!({ "cmd": "status" }), 4) {
+        Some("status") => match send(json!({ "cmd": "status" }), 15) {
             Ok(v) => {
                 let ok = v["ok"].as_bool().unwrap_or(false);
                 exit_with(v, ok);
@@ -187,7 +187,7 @@ pub fn try_run(args: &[String]) -> bool {
             let ok = v["ok"].as_bool().unwrap_or(false);
             exit_with(v, ok);
         }
-        Some("stop") => match send(json!({ "cmd": "stop" }), 4) {
+        Some("stop") => match send(json!({ "cmd": "stop" }), 15) {
             Ok(v) => {
                 let ok = v["ok"].as_bool().unwrap_or(false);
                 exit_with(v, ok);

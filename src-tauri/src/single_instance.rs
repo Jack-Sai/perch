@@ -8,8 +8,8 @@ use std::time::Duration;
 use serde_json::{Value, json};
 use tauri::Manager;
 use windows_sys::Win32::Foundation::{
-    CloseHandle, ERROR_ALREADY_EXISTS, FALSE, GENERIC_READ, GENERIC_WRITE, GetLastError,
-    INVALID_HANDLE_VALUE, TRUE,
+    CloseHandle, ERROR_ALREADY_EXISTS, ERROR_PIPE_CONNECTED, FALSE, GENERIC_READ, GENERIC_WRITE,
+    GetLastError, INVALID_HANDLE_VALUE, TRUE,
 };
 use windows_sys::Win32::Storage::FileSystem::{
     CreateFileW, OPEN_EXISTING, PIPE_ACCESS_DUPLEX, ReadFile, WriteFile,
@@ -228,7 +228,9 @@ pub fn start_focus_listener(app: tauri::AppHandle) {
             if pipe == 0 || pipe == INVALID_HANDLE_VALUE {
                 break;
             }
-            if unsafe { ConnectNamedPipe(pipe, ptr::null_mut()) } == TRUE {
+            let connected = unsafe { ConnectNamedPipe(pipe, ptr::null_mut()) } == TRUE
+                || unsafe { GetLastError() } == ERROR_PIPE_CONNECTED;
+            if connected {
                 let mut buf = [0u8; 4096];
                 let mut read: u32 = 0;
                 let ok = unsafe {
