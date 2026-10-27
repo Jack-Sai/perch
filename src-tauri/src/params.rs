@@ -56,7 +56,14 @@ pub fn split_args(text: &str) -> Vec<String> {
 /// 是否为参数 token（以 - 开头，且第二个字符为字母，排除负数）。
 fn is_flag(token: &str) -> bool {
     let mut chars = token.chars();
-    chars.next() == Some('-') && chars.next().map(|c| c.is_alphabetic()).unwrap_or(false)
+    if chars.next() != Some('-') {
+        return false;
+    }
+    match chars.next() {
+        Some('-') => chars.next().map(|c| c.is_alphabetic()).unwrap_or(false),
+        Some(c) => c.is_alphabetic(),
+        None => false,
+    }
 }
 
 /// 提取 token 的原始名称（长参数或短参数，去掉前导 - 与 =值）。
@@ -326,4 +333,46 @@ pub fn export_bat_cmd(profile: Profile, path: String, absolute: bool) -> Result<
     let content = build_bat(&binary, &args, &profile, absolute);
     std::fs::write(&path, content).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn split_args_supports_quotes() {
+        let out = split_args(r#"--model "C:\models\a b.gguf" --temp 0.7"#);
+        assert_eq!(out, vec!["--model", r"C:\models\a b.gguf", "--temp", "0.7"]);
+    }
+
+    #[test]
+    fn custom_args_override_form_values() {
+        let mut p = Profile::default();
+        p.model_path = "m.gguf".into();
+        p.port = 8080;
+        p.extra_params = "--host 0.0.0.0 --port 9000".into();
+        let (args, _, overridden, _) = build_args(&p);
+        assert!(overridden.contains(&"host".to_string()));
+        assert!(overridden.contains(&"port".to_string()));
+        assert!(!args.iter().any(|a| a == "127.0.0.1"));
+        assert_eq!(args.iter().filter(|a| *a == "--port").count(), 1);
+        assert!(args.iter().any(|a| a == "9000"));
+    }
+
+    #[test]
+    fn duplicate_custom_args_are_reported() {
+        let mut p = Profile::default();
+        p.extra_params = "-t 4 --threads 8 -t 6".into();
+        let (_, _, _, duplicated) = build_args(&p);
+        assert_eq!(duplicated, vec!["threads".to_string()]);
+    }
+
+    #[test]
+    fn env_expansion_keeps_unknown_vars() {
+        assert_eq!(
+            expand_env_vars("%PERCH_NOT_SET_EXAMPLE%"),
+            "%PERCH_NOT_SET_EXAMPLE%"
+        );
+        assert!(!expand_env_vars("%PATH%").is_empty());
+    }
 }

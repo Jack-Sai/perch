@@ -184,27 +184,15 @@ fn run_capture(exe: &Path, args: &[&str]) -> Result<String, String> {
     Ok(s)
 }
 
-/// 将一行拆成「参数部分」与「说明部分」：以第一个 2 个以上的连续空白为界。
-fn split_option_and_description(line: &str) -> (&str, &str) {
-    let mut run_start: Option<usize> = None;
-    let mut run_len = 0usize;
-    for (i, ch) in line.char_indices() {
-        if ch == ' ' || ch == '\t' {
-            if run_start.is_none() {
-                run_start = Some(i);
-            }
-            run_len += 1;
-        } else {
-            if run_len >= 2 {
-                if let Some(start) = run_start {
-                    return (&line[..start], line[i..].trim());
-                }
-            }
-            run_start = None;
-            run_len = 0;
-        }
+/// 判断 token 是否像值占位符（全大写、数字、尖括号/方括号包裹等）。
+fn looks_like_placeholder(token: &str) -> bool {
+    if token.is_empty() {
+        return false;
     }
-    (line.trim(), "")
+    if token.starts_with('<') || token.starts_with('[') {
+        return true;
+    }
+    token.chars().any(|c| c.is_ascii_alphabetic()) && !token.chars().any(|c| c.is_ascii_lowercase())
 }
 
 /// 解析 `--help` 文本，提取参数定义。
@@ -216,28 +204,36 @@ fn parse_help(raw: &str) -> Vec<HelpArg> {
         if !trimmed.starts_with('-') {
             continue;
         }
-        let (option_part, description) = split_option_and_description(trimmed);
+        let tokens: Vec<&str> = trimmed.split_whitespace().collect();
+        let mut idx = 0;
+
         let mut short = String::new();
         let mut long = String::new();
-        let mut value = String::new();
-        let mut takes_value = false;
-
-        for token in option_part.split_whitespace() {
-            let cleaned = token.trim_end_matches(',');
+        // 第一阶段：连续读取所有以 - 开头的别名
+        while idx < tokens.len() && tokens[idx].starts_with('-') {
+            let cleaned = tokens[idx].trim_end_matches(',');
             if cleaned.starts_with("--") {
                 if long.is_empty() {
                     let n = cleaned.trim_start_matches('-');
                     long = n.split('=').next().unwrap_or(n).to_lowercase();
                 }
-            } else if cleaned.starts_with('-') && cleaned.len() > 1 {
-                if short.is_empty() {
-                    short = cleaned.trim_start_matches('-').to_lowercase();
-                }
-            } else if !cleaned.is_empty() && value.is_empty() && !takes_value {
-                value = cleaned.to_string();
-                takes_value = true;
+            } else if cleaned.len() > 1 && short.is_empty() {
+                short = cleaned.trim_start_matches('-').to_lowercase();
             }
+            idx += 1;
         }
+
+        // 第二阶段：读取一个值占位符（若存在）
+        let mut value = String::new();
+        let mut takes_value = false;
+        if idx < tokens.len() && looks_like_placeholder(tokens[idx]) {
+            value = tokens[idx].trim_end_matches(',').to_string();
+            takes_value = true;
+            idx += 1;
+        }
+
+        // 剩余部分为说明
+        let description = tokens[idx.min(tokens.len())..].join(" ");
 
         let name = if long.is_empty() {
             short.clone()
@@ -247,27 +243,12 @@ fn parse_help(raw: &str) -> Vec<HelpArg> {
         if name.is_empty() {
             continue;
         }
-        // 占位值通常是全大写；小写占位视作可选说明，不误判为取值
-        let looks_like_placeholder = !value.is_empty()
-            && value.chars().all(|c| {
-                c.is_ascii_uppercase()
-                    || c.is_ascii_digit()
-                    || c == '_'
-                    || c == '['
-                    || c == ']'
-                    || c == '|'
-                    || c == '-'
-            });
-        if !looks_like_placeholder {
-            takes_value = false;
-            value.clear();
-        }
 
         args.push(HelpArg {
             name,
             short,
             value,
-            description: description.to_string(),
+            description,
             takes_value,
         });
     }
@@ -389,3 +370,69 @@ fn resolve_and_build(exe: &Path) -> Result<BinaryInfo, String> {
         help_args,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const HELP: &str = "----- common params -----
+-h,    --help, --usage                  print usage and exit
+--version                               show version and build info
+-t,    --threads N                      number of CPU threads to use
+-fa,   --flash-attn [on|off|auto]       set Flash Attention use
+-C,    --cpu-mask M                     CPU affinity mask
+--cpu-strict <0|1>                      use strict CPU placement
+";
+
+    #[test]
+    fn parse_help_extracts_options_and_values() {
+        let args = parse_help(HELP);
+        let threads = args.iter().find(|a| a.name == "threads").unwrap();
+        assert_eq!(threads.short, "t");
+        assert_eq!(threads.value, "N");
+        assert!(threads.takes_value);
+
+        let version = args.iter().find(|a| a.name == "version").unwrap();
+        assert!(!version.takes_value);
+
+        let flash = args.iter().find(|a| a.name == "flash-attn").unwrap();
+        assert_eq!(flash.value, "[on|off|auto]");
+
+        let strict = args.iter().find(|a| a.name == "cpu-strict").unwrap();
+        assert_eq!(strict.value, "<0|1>");
+        assert!(strict.description.starts_with("use strict"));
+    }
+
+    #[test]
+    fn identify_backend_from_dir_name() {
+        assert_eq!(
+            identify_backend(Path::new("D:/llama/cuda/llama-server.exe")),
+            "CUDA"
+        );
+        assert_eq!(
+            identify_backend(Path::new("D:/llama/vulkan/llama-server.exe")),
+            "Vulkan"
+        );
+    }
+
+    /// 需设置 PERCH_TEST_BINARY 指向真实 llama-server.exe 后手动运行：
+    /// $env:PERCH_TEST_BINARY="D:\llama.cpp\llama-server.exe"; cargo test -- --ignored
+    #[test]
+    #[ignore]
+    fn scan_real_binary() {
+        let Ok(path) = std::env::var("PERCH_TEST_BINARY") else {
+            return;
+        };
+        let exe = Path::new(&path);
+        assert!(exe.is_file());
+        let args = scan_help(exe, true).expect("scan help");
+        assert!(args.len() > 50, "parsed only {} args", args.len());
+        assert!(args.iter().any(|a| a.name == "threads"));
+        assert!(
+            args.iter()
+                .any(|a| a.name == "gpu-layers" || a.name == "ngl")
+        );
+        assert!(args.iter().any(|a| a.name == "model" || a.name == "m"));
+    }
+}
+
