@@ -39,13 +39,13 @@ fn system() -> &'static Mutex<System> {
 }
 
 #[derive(Debug, Clone, Default)]
-struct GpuInfo {
-    name: Option<String>,
-    util: Option<f32>,
-    mem_used: Option<u64>,
-    mem_total: Option<u64>,
-    temp: Option<f32>,
-    source: Option<String>,
+pub struct GpuInfo {
+    pub name: Option<String>,
+    pub util: Option<f32>,
+    pub mem_used: Option<u64>,
+    pub mem_total: Option<u64>,
+    pub temp: Option<f32>,
+    pub source: Option<String>,
 }
 
 fn parse_f32(s: &str) -> Option<f32> {
@@ -86,7 +86,7 @@ fn query_nvidia_smi() -> Option<GpuInfo> {
 }
 
 /// 采集 GPU 信息，带 2 秒缓存以降低 nvidia-smi 调用开销。
-fn gpu_info() -> GpuInfo {
+pub(crate) fn gpu_info() -> GpuInfo {
     static CACHE: OnceLock<Mutex<(std::time::Instant, Option<GpuInfo>)>> = OnceLock::new();
     let cache = CACHE.get_or_init(|| Mutex::new((std::time::Instant::now(), None)));
     let mut guard = cache.lock().unwrap();

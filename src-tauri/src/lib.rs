@@ -5,6 +5,7 @@ mod monitor;
 mod params;
 mod port;
 mod process;
+mod recommend;
 mod single_instance;
 mod state;
 mod tray;
@@ -55,6 +56,7 @@ pub fn run() {
             process::read_server_log_cmd,
             monitor::get_metrics_cmd,
             files::save_text_file_cmd,
+            recommend::recommend_cmd,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

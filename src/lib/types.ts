@@ -52,6 +52,18 @@ export interface BinaryInfo {
   help_args: HelpArg[];
 }
 
+export interface RecommendationItem {
+  key: string;
+  value: string;
+  reason_key: string;
+  reason_args: Record<string, string>;
+}
+
+export interface Recommendation {
+  items: RecommendationItem[];
+  facts: string[];
+}
+
 export interface CommandPreview {
   args: string[];
   preview: string;

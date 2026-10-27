@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Save,
   Search,
+  Sparkles,
   Star,
   StarOff,
   Terminal,
@@ -18,7 +19,7 @@ import { api, type PortStatus } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 import { useStore } from "../lib/store";
 import { useToast } from "../lib/toast";
-import type { CommandPreview, HelpArg, Profile } from "../lib/types";
+import type { CommandPreview, HelpArg, Profile, Recommendation } from "../lib/types";
 import { cn } from "../lib/utils";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -80,6 +81,8 @@ export function Parameters() {
   const [portState, setPortState] = useState<PortStatus | null>(null);
   const [freePort, setFreePort] = useState<number | null>(null);
   const [pendingHost, setPendingHost] = useState<string | null>(null);
+  const [rec, setRec] = useState<Recommendation | null>(null);
+  const [recBusy, setRecBusy] = useState(false);
 
   const profile = editingProfile;
 
@@ -107,6 +110,33 @@ export function Parameters() {
       window.clearTimeout(timer);
     };
   }, [profile, previewTick, toast]);
+
+  const requestRecommendation = async () => {
+    if (!profile) return;
+    setRecBusy(true);
+    try {
+      const result = await api.recommend(profile);
+      setRec(result);
+    } catch (e) {
+      toast(`${t("rec.failed")}: ${String(e)}`, "error");
+    } finally {
+      setRecBusy(false);
+    }
+  };
+
+  const applyRecommendation = () => {
+    if (!rec) return;
+    const patch: Partial<Profile> = {};
+    for (const item of rec.items) {
+      if (item.key === "ctx_size") patch.ctx_size = Number(item.value);
+      else if (item.key === "ngl") patch.ngl = Number(item.value);
+      else if (item.key === "threads") patch.threads = Number(item.value);
+      else if (item.key === "flash_attn") patch.flash_attn = item.value === "true";
+    }
+    update(patch);
+    setRec(null);
+    toast(t("rec.applied"), "success");
+  };
 
   const saveAll = async () => {
     if (!cfg) return;
@@ -343,9 +373,20 @@ export function Parameters() {
 
           {/* 常用参数 */}
           <Card>
-            <CardHeader>
-              <CardTitle>{t("params.common")}</CardTitle>
-              <CardDescription>{t("params.savedHint")}</CardDescription>
+            <CardHeader className="flex-row items-start justify-between">
+              <div>
+                <CardTitle>{t("params.common")}</CardTitle>
+                <CardDescription>{t("params.savedHint")}</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={recBusy || !profile.model_path}
+                onClick={() => void requestRecommendation()}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {t("rec.title")}
+              </Button>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
@@ -671,6 +712,71 @@ export function Parameters() {
           )}
         </div>
       </div>
+
+      <Dialog
+        open={rec !== null}
+        onClose={() => setRec(null)}
+        title={t("rec.title")}
+        description={t("rec.hint")}
+        className="max-h-[85vh] max-w-2xl overflow-auto"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setRec(null)}>
+              {t("action.cancel")}
+            </Button>
+            <Button onClick={applyRecommendation} disabled={!rec || rec.items.length === 0}>
+              <Check className="h-3.5 w-3.5" />
+              {t("rec.apply")}
+            </Button>
+          </>
+        }
+      >
+        {rec && (
+          <div className="space-y-4">
+            <div>
+              <div className="mb-1 text-[11px] font-medium text-muted-foreground">
+                {t("rec.facts")}
+              </div>
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                {rec.facts.map((f) => (
+                  <li key={f} className="mono break-all">
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="space-y-2">
+              {rec.items.length === 0 && (
+                <p className="text-xs text-muted-foreground">{t("rec.empty")}</p>
+              )}
+              {rec.items.map((item) => (
+                <div
+                  key={item.key}
+                  className="rounded-md border border-border bg-muted/30 p-2.5 text-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">
+                      {t(
+                        item.key === "ctx_size"
+                          ? "params.ctxSize"
+                          : item.key === "ngl"
+                            ? "params.ngl"
+                            : item.key === "threads"
+                              ? "params.threads"
+                              : "params.flashAttn",
+                      )}
+                    </span>
+                    <span className="mono font-semibold text-primary">{item.value}</span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {t(item.reason_key, item.reason_args)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Dialog>
 
       <Dialog
         open={pendingHost !== null}
