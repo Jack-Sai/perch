@@ -141,6 +141,8 @@ const zh: Dict = {
   "profiles.exportMasked": "导出脱敏配置",
   "profiles.exportFull": "导出完整配置",
   "profiles.imported": "配置已导入",
+  "profiles.created": "配置已创建",
+  "profiles.deleted": "配置已删除",
   "profiles.importNeedModel": "导入成功，请重新指定模型路径",
 
   "settings.title": "设置",
@@ -352,6 +354,8 @@ const en: Dict = {
   "profiles.exportMasked": "Export masked",
   "profiles.exportFull": "Export full",
   "profiles.imported": "Profile imported",
+  "profiles.created": "Profile created",
+  "profiles.deleted": "Profile deleted",
   "profiles.importNeedModel": "Imported. Please re-select the model path",
 
   "settings.title": "Settings",

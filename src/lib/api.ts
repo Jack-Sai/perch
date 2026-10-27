@@ -21,6 +21,9 @@ export const api = {
   createProfile: (name: string) => invoke<AppConfig>("create_profile", { name }),
   deleteProfile: (name: string) => invoke<AppConfig>("delete_profile", { name }),
   setLastProfile: (name: string) => invoke<AppConfig>("set_last_profile", { name }),
+  exportConfig: (path: string, maskModel: boolean) =>
+    invoke<void>("export_config_cmd", { path, maskModel }),
+  importConfig: (path: string) => invoke<AppConfig>("import_config_cmd", { path }),
 
   detectBinary: () => invoke<BinaryInfo>("detect_binary_cmd"),
   resolveBinary: (input: string) => invoke<BinaryInfo>("resolve_binary_cmd", { input }),

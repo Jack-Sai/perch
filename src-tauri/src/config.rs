@@ -223,3 +223,65 @@ pub fn set_last_profile(name: String) -> Result<AppConfig, String> {
     save_config(&cfg)?;
     Ok(cfg)
 }
+
+fn file_name_of(path: &str) -> String {
+    std::path::Path::new(path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default()
+}
+
+/// 导出配置为 TOML。mask_model=true 时将模型路径替换为 `<MODEL_PATH>`，
+/// 并在文件头部注释中保留文件名提示（不泄露完整路径）。
+#[tauri::command]
+pub fn export_config_cmd(path: String, mask_model: bool) -> Result<(), String> {
+    let cfg = load_config()?;
+    let mut header = String::from("# Perch configuration export\n");
+    let mut out_cfg = cfg.clone();
+    if mask_model {
+        for p in &mut out_cfg.profiles {
+            if !p.model_path.is_empty() {
+                header.push_str(&format!(
+                    "# profile {}: model file = {}\n",
+                    p.name,
+                    file_name_of(&p.model_path)
+                ));
+                p.model_path = "<MODEL_PATH>".into();
+            }
+        }
+    }
+    let body = toml::to_string_pretty(&out_cfg).map_err(|e| e.to_string())?;
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
+    fs::write(&path, format!("{header}{body}")).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// 导入配置 TOML，合并到现有配置。同名方案自动追加后缀，避免覆盖。
+/// 返回合并后的完整配置；模型路径为占位符的方案由前端提示重新指定。
+#[tauri::command]
+pub fn import_config_cmd(path: String) -> Result<AppConfig, String> {
+    let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let imported: AppConfig = toml::from_str(&content).map_err(|e| format!("TOML 解析失败：{e}"))?;
+    if imported.profiles.is_empty() {
+        return Err("导入文件中没有任何配置方案".into());
+    }
+    let mut cfg = load_config()?;
+    for mut p in imported.profiles {
+        if p.name.trim().is_empty() {
+            p.name = "imported".into();
+        }
+        let base = p.name.clone();
+        let mut idx = 1;
+        while cfg.profiles.iter().any(|x| x.name == p.name) {
+            idx += 1;
+            p.name = format!("{base}-imported{idx}");
+        }
+        cfg.profiles.push(p);
+    }
+    save_config(&cfg)?;
+    Ok(cfg)
+}

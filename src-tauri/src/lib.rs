@@ -37,6 +37,8 @@ pub fn run() {
             config::create_profile,
             config::delete_profile,
             config::set_last_profile,
+            config::export_config_cmd,
+            config::import_config_cmd,
             binary::detect_binary_cmd,
             binary::resolve_binary_cmd,
             binary::inspect_binary_cmd,

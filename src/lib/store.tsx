@@ -55,7 +55,7 @@ interface StoreValue {
 const StoreContext = createContext<StoreValue | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const { setLang } = useI18n();
+  const { t, setLang } = useI18n();
   const { setTheme } = useTheme();
   const { toast } = useToast();
 
@@ -160,13 +160,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         await api.saveConfig(next);
         setCfg(next);
         applyPreferences(next.global);
-        if (!opts?.silent) toast("已保存", "success");
+        if (!opts?.silent) toast(t("action.saved"), "success");
       } catch (e) {
         toast(String(e), "error");
         throw e;
       }
     },
-    [applyPreferences, toast],
+    [applyPreferences, t, toast],
   );
 
   const updateGlobal = useCallback((patch: Partial<GlobalConfig>) => {
@@ -196,12 +196,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setCfg(next);
         setEditing(name);
         editingRef.current = name;
-        toast("配置已创建", "success");
+        toast(t("profiles.created"), "success");
       } catch (e) {
         toast(String(e), "error");
       }
     },
-    [toast],
+    [t, toast],
   );
 
   const removeProfile = useCallback(
@@ -210,12 +210,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const next = await api.deleteProfile(name);
         setCfg(next);
         if (editingRef.current === name) chooseEditing(next);
-        toast("配置已删除", "success");
+        toast(t("profiles.deleted"), "success");
       } catch (e) {
         toast(String(e), "error");
       }
     },
-    [chooseEditing, toast],
+    [chooseEditing, t, toast],
   );
 
   const selectProfile = useCallback(
