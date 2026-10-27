@@ -75,6 +75,10 @@ const zh: Dict = {
   "dashboard.sampleInterval": "采样间隔 {n}s",
   "dashboard.alert": "资源告警",
   "dashboard.noAlert": "各项资源正常",
+  "dashboard.exportCsv": "导出 CSV",
+  "dashboard.exportJson": "导出 JSON",
+  "dashboard.exported": "监控数据已导出",
+  "dashboard.exportFailed": "导出失败",
   "dashboard.startHint": "配置就绪后点击「启动」",
   "dashboard.healthChecking": "正在等待 /health 响应…",
 
@@ -319,6 +323,10 @@ const en: Dict = {
   "dashboard.sampleInterval": "Sample interval {n}s",
   "dashboard.alert": "Resource alerts",
   "dashboard.noAlert": "All resources normal",
+  "dashboard.exportCsv": "Export CSV",
+  "dashboard.exportJson": "Export JSON",
+  "dashboard.exported": "Monitoring data exported",
+  "dashboard.exportFailed": "Export failed",
   "dashboard.startHint": "Configure a profile, then press Start",
   "dashboard.healthChecking": "Waiting for /health response…",
 

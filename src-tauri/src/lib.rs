@@ -1,5 +1,6 @@
 mod binary;
 mod config;
+mod files;
 mod monitor;
 mod params;
 mod port;
@@ -53,6 +54,7 @@ pub fn run() {
             process::get_server_status_cmd,
             process::read_server_log_cmd,
             monitor::get_metrics_cmd,
+            files::save_text_file_cmd,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

@@ -435,4 +435,3 @@ mod tests {
         assert!(args.iter().any(|a| a.name == "model" || a.name == "m"));
     }
 }
-

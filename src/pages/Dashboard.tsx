@@ -23,6 +23,7 @@ import {
   Terminal,
   Thermometer,
 } from "lucide-react";
+import { save } from "@tauri-apps/plugin-dialog";
 import { api, type PortStatus } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 import { useStore } from "../lib/store";
@@ -303,6 +304,61 @@ export function Dashboard() {
   if (metrics?.gpu_temp_c != null && metrics.gpu_temp_c >= tempAlert)
     alerts.push(`${t("dashboard.gpuTemp")} ${metrics.gpu_temp_c.toFixed(0)}°C`);
 
+  const exportSamples = useCallback(
+    async (format: "csv" | "json") => {
+      if (samples.length === 0) return;
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      try {
+        const path = await save({
+          defaultPath: `perch-metrics-${stamp}.${format}`,
+          filters: [
+            {
+              name: format === "csv" ? "CSV" : "JSON",
+              extensions: [format],
+            },
+          ],
+        });
+        if (!path) return;
+        let content: string;
+        if (format === "csv") {
+          const header =
+            "timestamp,epoch_ms,cpu_percent,mem_mb,gpu_util_percent,gpu_mem_used_mb,gpu_temp_c";
+          const rows = samples.map((s) =>
+            [
+              new Date(s.t).toISOString(),
+              s.t,
+              s.cpu.toFixed(2),
+              s.mem.toFixed(1),
+              s.gpuUtil.toFixed(2),
+              s.gpuMem.toFixed(1),
+              s.gpuTemp.toFixed(1),
+            ].join(","),
+          );
+          content = [header, ...rows].join("\r\n");
+        } else {
+          content = JSON.stringify(
+            samples.map((s) => ({
+              timestamp: new Date(s.t).toISOString(),
+              epoch_ms: s.t,
+              cpu_percent: s.cpu,
+              mem_mb: s.mem,
+              gpu_util_percent: s.gpuUtil,
+              gpu_mem_used_mb: s.gpuMem,
+              gpu_temp_c: s.gpuTemp,
+            })),
+            null,
+            2,
+          );
+        }
+        await api.saveTextFile(path, content);
+        toast(t("dashboard.exported"));
+      } catch (e) {
+        toast(`${t("dashboard.exportFailed")}: ${String(e)}`, "error");
+      }
+    },
+    [samples, t, toast],
+  );
+
   const chartData = useMemo(() => {
     if (samples.length <= 500) {
       return samples.map((s) => ({ ...s, label: formatTime(s.t) }));
@@ -481,9 +537,31 @@ export function Dashboard() {
               <span className="text-warning">{alerts.join(" · ")}</span>
             </>
           )}
-          {metrics?.gpu_name && (
-            <span className="mono ml-auto truncate text-muted-foreground">{metrics.gpu_name}</span>
-          )}
+          <div className="ml-auto flex items-center gap-1">
+            {metrics?.gpu_name && (
+              <span className="mono mr-2 max-w-56 truncate text-muted-foreground">
+                {metrics.gpu_name}
+              </span>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-[11px]"
+              disabled={samples.length === 0}
+              onClick={() => void exportSamples("csv")}
+            >
+              {t("dashboard.exportCsv")}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-[11px]"
+              disabled={samples.length === 0}
+              onClick={() => void exportSamples("json")}
+            >
+              {t("dashboard.exportJson")}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

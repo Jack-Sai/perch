@@ -41,4 +41,6 @@ export const api = {
 
   checkPort: (port: number) => invoke<PortStatus>("check_port_cmd", { port }),
   findFreePort: (start: number) => invoke<number>("find_free_port_cmd", { start }),
+  saveTextFile: (path: string, contents: string) =>
+    invoke<void>("save_text_file_cmd", { path, contents }),
 };
