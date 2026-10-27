@@ -91,7 +91,17 @@ fn handle_menu(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) {
             }
         }
         "exit" => {
-            app.exit(0);
+            let cfg = load_config().unwrap_or_else(|_| crate::config::default_config());
+            if cfg.global.exit_keep_server {
+                app.exit(0);
+            } else {
+                let handle = app.clone();
+                let arc = state.inner().clone();
+                std::thread::spawn(move || {
+                    crate::process::shutdown_blocking(&arc, std::time::Duration::from_secs(30));
+                    let _ = handle.exit(0);
+                });
+            }
         }
         _ => {}
     }

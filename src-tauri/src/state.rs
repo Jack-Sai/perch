@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 /// 生命周期状态机：Idle -> Launching -> Running -> Stopping -> Idle
 /// Error 为启动失败 / 运行中崩溃的终态（需手动重置）。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum ServerStatus {
     Idle,
     Launching,

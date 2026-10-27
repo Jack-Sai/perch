@@ -321,6 +321,32 @@ pub fn stop_server(app: &tauri::AppHandle, state: &Arc<AppState>) -> Result<Serv
     Ok(ServerStatus::Stopping)
 }
 
+/// 退出前同步关闭 server：先请求终止，最多等待 grace，然后强制 kill。
+pub fn shutdown_blocking(state: &Arc<AppState>, grace: Duration) {
+    let (pid, mut child) = {
+        let mut inner = state.inner.lock().unwrap();
+        (inner.pid, inner.child.take())
+    };
+    let Some(mut child) = child.take() else {
+        return;
+    };
+    if let Some(pid) = pid {
+        let _ = std::process::Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T"])
+            .creation_flags(NO_WINDOW)
+            .output();
+    }
+    let start = SystemTime::now();
+    while start.elapsed().unwrap_or_default() < grace {
+        if let Ok(Some(_)) = child.try_wait() {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(200));
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 /// 读取当前状态。
 pub fn get_status(state: &Arc<AppState>) -> ServerStatus {
     state.inner.lock().unwrap().status.clone()

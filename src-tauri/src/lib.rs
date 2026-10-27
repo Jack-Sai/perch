@@ -21,6 +21,7 @@ pub fn run() {
     }
 
     let state = Arc::new(state::AppState::new());
+    let setup_state = state.clone();
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -55,27 +56,34 @@ pub fn run() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
-            tray::create_tray(&handle, &state)?;
+            tray::create_tray(&handle, &setup_state)?;
             single_instance::start_focus_listener(handle);
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
-    app.run(|app_handle, event| {
+    app.run(move |app_handle, event| {
         if let tauri::RunEvent::WindowEvent {
             event: tauri::WindowEvent::CloseRequested { api, .. },
             ..
         } = event
         {
-            // 关闭主窗口：依据全局设置隐藏到托盘或直接退出
-            if let Ok(cfg) = config::load_config() {
-                if cfg.global.close_to_tray && !cfg.global.exit_keep_server {
-                    api.prevent_close();
-                    if let Some(w) = app_handle.get_webview_window("main") {
-                        let _ = w.hide();
-                    }
+            // 关闭主窗口：隐藏到托盘，或按设置停止 server 后退出 / 保留 server 退出
+            let cfg = config::load_config().unwrap_or_else(|_| config::default_config());
+            if cfg.global.close_to_tray {
+                api.prevent_close();
+                if let Some(w) = app_handle.get_webview_window("main") {
+                    let _ = w.hide();
                 }
+            } else if !cfg.global.exit_keep_server {
+                api.prevent_close();
+                let handle = app_handle.clone();
+                let st = Arc::clone(&state);
+                std::thread::spawn(move || {
+                    process::shutdown_blocking(&st, std::time::Duration::from_secs(30));
+                    let _ = handle.exit(0);
+                });
             }
         }
     });
