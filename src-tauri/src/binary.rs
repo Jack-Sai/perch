@@ -184,38 +184,61 @@ fn run_capture(exe: &Path, args: &[&str]) -> Result<String, String> {
     Ok(s)
 }
 
+/// 将一行拆成「参数部分」与「说明部分」：以第一个 2 个以上的连续空白为界。
+fn split_option_and_description(line: &str) -> (&str, &str) {
+    let mut run_start: Option<usize> = None;
+    let mut run_len = 0usize;
+    for (i, ch) in line.char_indices() {
+        if ch == ' ' || ch == '\t' {
+            if run_start.is_none() {
+                run_start = Some(i);
+            }
+            run_len += 1;
+        } else {
+            if run_len >= 2 {
+                if let Some(start) = run_start {
+                    return (&line[..start], line[i..].trim());
+                }
+            }
+            run_start = None;
+            run_len = 0;
+        }
+    }
+    (line.trim(), "")
+}
+
 /// 解析 `--help` 文本，提取参数定义。
 fn parse_help(raw: &str) -> Vec<HelpArg> {
     let mut args = Vec::new();
     for line in raw.lines() {
-        // 形如：  -ngl, --gpu-layers N      说明
-        // 或：      --flash-attn          说明
         let trimmed = line.trim_start();
+        // 只处理以 - 开头的参数行；跳过分组标题与说明续行
         if !trimmed.starts_with('-') {
             continue;
         }
-        // 取前两个空白分隔的 token：短/长参数 + 值占位
-        let mut parts = trimmed
-            .splitn(3, char::is_whitespace)
-            .filter(|s| !s.is_empty());
-        let first = match parts.next() {
-            Some(f) => f,
-            None => continue,
-        };
-        let value = parts.next().unwrap_or("").to_string();
-        let description = parts.next().unwrap_or("").to_string();
+        let (option_part, description) = split_option_and_description(trimmed);
+        let mut short = String::new();
+        let mut long = String::new();
+        let mut value = String::new();
+        let mut takes_value = false;
 
-        // 拆分短/长
-        let (short, long) = if first.contains(',') {
-            let mut it = first.split(',');
-            let s = it.next().unwrap_or("").trim_start_matches('-').to_string();
-            let l = it.next().unwrap_or("").trim_start_matches('-').to_string();
-            (s, l)
-        } else if first.starts_with("--") {
-            ("".into(), first.trim_start_matches('-').to_string())
-        } else {
-            (first.trim_start_matches('-').to_string(), "".into())
-        };
+        for token in option_part.split_whitespace() {
+            let cleaned = token.trim_end_matches(',');
+            if cleaned.starts_with("--") {
+                if long.is_empty() {
+                    let n = cleaned.trim_start_matches('-');
+                    long = n.split('=').next().unwrap_or(n).to_lowercase();
+                }
+            } else if cleaned.starts_with('-') && cleaned.len() > 1 {
+                if short.is_empty() {
+                    short = cleaned.trim_start_matches('-').to_lowercase();
+                }
+            } else if !cleaned.is_empty() && value.is_empty() && !takes_value {
+                value = cleaned.to_string();
+                takes_value = true;
+            }
+        }
+
         let name = if long.is_empty() {
             short.clone()
         } else {
@@ -224,12 +247,27 @@ fn parse_help(raw: &str) -> Vec<HelpArg> {
         if name.is_empty() {
             continue;
         }
-        let takes_value = !value.is_empty() && !value.starts_with('-');
+        // 占位值通常是全大写；小写占位视作可选说明，不误判为取值
+        let looks_like_placeholder = !value.is_empty()
+            && value.chars().all(|c| {
+                c.is_ascii_uppercase()
+                    || c.is_ascii_digit()
+                    || c == '_'
+                    || c == '['
+                    || c == ']'
+                    || c == '|'
+                    || c == '-'
+            });
+        if !looks_like_placeholder {
+            takes_value = false;
+            value.clear();
+        }
+
         args.push(HelpArg {
             name,
             short,
             value,
-            description,
+            description: description.to_string(),
             takes_value,
         });
     }

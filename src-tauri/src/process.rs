@@ -123,6 +123,23 @@ pub fn start_server(
         .creation_flags(NO_WINDOW)
         .stdout(file)
         .stderr(err_file);
+
+    let work_dir = crate::params::expand_env_vars(profile.work_dir.trim());
+    if !work_dir.is_empty() {
+        cmd.current_dir(&work_dir);
+    }
+    for entry in &profile.env_vars {
+        let entry = entry.trim();
+        if entry.is_empty() || entry.starts_with('#') {
+            continue;
+        }
+        if let Some((key, value)) = entry.split_once('=') {
+            let key = key.trim();
+            if !key.is_empty() {
+                cmd.env(key, crate::params::expand_env_vars(value.trim()));
+            }
+        }
+    }
     let child = cmd.spawn().map_err(|e| format!("启动失败：{e}"))?;
     let pid = child.id();
 
@@ -202,6 +219,14 @@ pub fn stop_server(app: &tauri::AppHandle, state: &Arc<AppState>) -> Result<Serv
     let state2 = state.clone();
     std::thread::spawn(move || {
         let start = SystemTime::now();
+        // 先尝试优雅终止（taskkill 不带 /F），超时后强制 kill
+        let pid = state2.inner.lock().unwrap().pid;
+        if let Some(pid) = pid {
+            let _ = std::process::Command::new("taskkill")
+                .args(["/PID", &pid.to_string(), "/T"])
+                .creation_flags(NO_WINDOW)
+                .output();
+        }
         loop {
             let exited = {
                 let mut inner = state2.inner.lock().unwrap();

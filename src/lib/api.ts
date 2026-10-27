@@ -28,6 +28,8 @@ export const api = {
   rescanHelp: (force: boolean) => invoke<BinaryInfo>("rescan_help_cmd", { force }),
 
   buildCommand: (profile: Profile) => invoke<CommandPreview>("build_command_cmd", { profile }),
+  exportBat: (profile: Profile, path: string, absolute: boolean) =>
+    invoke<void>("export_bat_cmd", { profile, path, absolute }),
   startServer: (profile: Profile) => invoke<ServerStatus>("start_server_cmd", { profile }),
   stopServer: () => invoke<ServerStatus>("stop_server_cmd"),
   getServerStatus: () => invoke<ServerStatus>("get_server_status_cmd"),

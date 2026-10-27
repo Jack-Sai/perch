@@ -44,6 +44,7 @@ pub fn run() {
             port::check_port_cmd,
             port::find_free_port_cmd,
             params::build_command_cmd,
+            params::export_bat_cmd,
             process::start_server_cmd,
             process::stop_server_cmd,
             process::get_server_status_cmd,
