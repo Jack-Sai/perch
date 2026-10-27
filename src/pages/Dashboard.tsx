@@ -274,6 +274,25 @@ export function Dashboard() {
     }
   };
 
+  const diagnosisKey = useMemo(() => {
+    if (kind !== "error") return null;
+    const text = `${statusError(status)}\n${logLines.join("\n")}`.toLowerCase();
+    if (/启动超时|timed out|timeout/.test(text)) return "error.diag.timeout";
+    if (/address already in use|couldn't bind|bind.*fail|10048|端口被占用/.test(text))
+      return "error.diag.port";
+    if (/out of memory|failed to allocate|cuda error.*memory|显存不足/.test(text))
+      return "error.diag.vram";
+    if (/failed to load model|error loading model|invalid model|not a valid gguf|failed to open.*gguf/.test(text))
+      return "error.diag.model";
+    if (/unknown argument|invalid argument|unrecognized option|error: invalid/.test(text))
+      return "error.diag.arg";
+    if (/access denied|permission denied|privilege|拒绝访问/.test(text))
+      return "error.diag.permission";
+    if (/no such file|not found|cannot find|binary/.test(text)) return "error.diag.binary";
+    if (/backend|no usable gpu|device.*not supported/.test(text)) return "error.diag.backend";
+    return "error.diag.unknown";
+  }, [kind, status, logLines]);
+
   const alerts: string[] = [];
   if (metrics?.cpu_percent && metrics.cpu_percent >= CPU_ALERT)
     alerts.push(`${t("dashboard.cpu")} ${formatPercent(metrics.cpu_percent)}`);
@@ -601,13 +620,40 @@ export function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-xs text-destructive">{statusError(status)}</p>
+            {diagnosisKey && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+                <div className="mb-1 text-[11px] font-medium text-destructive">
+                  {t("error.diag.title")}
+                </div>
+                <p className="text-xs text-foreground/90">{t(diagnosisKey)}</p>
+              </div>
+            )}
             {preview && (
               <div>
-                <div className="mb-1 text-[11px] font-medium text-muted-foreground">
-                  {t("dashboard.command")}
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    {t("dashboard.command")}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => void navigator.clipboard.writeText(preview.preview)}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
                 </div>
                 <pre className="mono max-h-24 overflow-auto whitespace-pre-wrap break-all rounded-md border border-border bg-muted/40 p-2 text-[11px]">
                   {preview.preview}
+                </pre>
+              </div>
+            )}
+            {logLines.length > 0 && (
+              <div>
+                <div className="mb-1 text-[11px] font-medium text-muted-foreground">
+                  {t("dashboard.stderr")}
+                </div>
+                <pre className="mono max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md border border-border bg-muted/40 p-2 text-[11px]">
+                  {logLines.slice(-200).join("\n")}
                 </pre>
               </div>
             )}
