@@ -5,6 +5,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Parameters } from "./pages/Parameters";
 import { Profiles } from "./pages/Profiles";
 import { Settings } from "./pages/Settings";
+import { Wizard } from "./components/Wizard";
 
 function App() {
   const [page, setPage] = useState<Page>("dashboard");
@@ -21,6 +22,7 @@ function App() {
           {page === "settings" && <Settings />}
         </main>
       </div>
+      <Wizard />
     </div>
   );
 }
