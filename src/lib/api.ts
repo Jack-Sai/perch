@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  ApiStatus,
   AppConfig,
   BinaryInfo,
   CommandPreview,
@@ -45,4 +46,5 @@ export const api = {
   saveTextFile: (path: string, contents: string) =>
     invoke<void>("save_text_file_cmd", { path, contents }),
   recommend: (profile: Profile) => invoke<Recommendation>("recommend_cmd", { profile }),
+  apiStatus: () => invoke<ApiStatus>("api_status_cmd"),
 };

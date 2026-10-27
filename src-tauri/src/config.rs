@@ -194,8 +194,13 @@ pub fn load_config_cmd() -> Result<AppConfig, String> {
 
 /// 整体保存配置（前端编辑后调用）。
 #[tauri::command]
-pub fn save_config_cmd(cfg: AppConfig) -> Result<(), String> {
-    save_config(&cfg)
+pub fn save_config_cmd(
+    cfg: AppConfig,
+    state: tauri::State<'_, std::sync::Arc<crate::state::AppState>>,
+) -> Result<(), String> {
+    save_config(&cfg)?;
+    crate::api_server::sync_server(std::sync::Arc::clone(&state));
+    Ok(())
 }
 
 /// 新建一套配置方案；同名时报错。

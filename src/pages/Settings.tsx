@@ -16,6 +16,7 @@ import { useI18n, type Lang } from "../lib/i18n";
 import { useStore } from "../lib/store";
 import { useTheme, type Theme } from "../lib/theme";
 import { useToast } from "../lib/toast";
+import type { ApiStatus } from "../lib/types";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
@@ -38,11 +39,16 @@ export function Settings() {
   const { toast } = useToast();
   const [autoStartActual, setAutoStartActual] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
+  const [apiStatus, setApiStatus] = useState<ApiStatus | null>(null);
 
   useEffect(() => {
     isEnabled()
       .then(setAutoStartActual)
       .catch(() => setAutoStartActual(null));
+    api
+      .apiStatus()
+      .then(setApiStatus)
+      .catch(() => setApiStatus(null));
   }, []);
 
   if (!cfg) return <div className="p-6 text-sm text-muted-foreground">{t("misc.loading")}</div>;
@@ -79,6 +85,10 @@ export function Settings() {
     setSaving(true);
     try {
       await saveCfg(next, { silent: true });
+      api
+        .apiStatus()
+        .then(setApiStatus)
+        .catch(() => setApiStatus(null));
       try {
         if (next.global.autostart) await enable();
         else await disable();
@@ -435,6 +445,26 @@ export function Settings() {
                 </Button>
               </div>
             </div>
+
+            {g.api_enabled && (
+              <div className="space-y-1 rounded-md border border-border bg-muted/30 p-2.5 text-[11px]">
+                <div className="flex items-center gap-2">
+                  <Badge tone={apiStatus?.running ? "success" : "muted"}>
+                    {apiStatus?.running ? t("settings.apiRunning") : t("settings.apiStopped")}
+                  </Badge>
+                  {apiStatus?.running && (
+                    <span className="mono text-muted-foreground">
+                      127.0.0.1:{apiStatus.port}
+                    </span>
+                  )}
+                </div>
+                {apiStatus?.error && <p className="text-destructive">{apiStatus.error}</p>}
+                <p className="text-muted-foreground">{t("settings.apiEndpoints")}</p>
+                {g.api_token && (
+                  <p className="text-muted-foreground">{t("settings.apiAuthHint")}</p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

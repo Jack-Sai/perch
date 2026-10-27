@@ -100,6 +100,11 @@ pub(crate) fn gpu_info() -> GpuInfo {
 
 #[tauri::command]
 pub fn get_metrics_cmd(state: tauri::State<'_, Arc<AppState>>) -> Metrics {
+    snapshot(&state)
+}
+
+/// 采集一次指标快照（供 Tauri 命令与只读 API 复用）。
+pub(crate) fn snapshot(state: &AppState) -> Metrics {
     let (pid, running) = {
         let inner = state.inner.lock().unwrap();
         (inner.pid, matches!(inner.status, ServerStatus::Running))

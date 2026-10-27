@@ -52,6 +52,13 @@ export interface BinaryInfo {
   help_args: HelpArg[];
 }
 
+export interface ApiStatus {
+  enabled: boolean;
+  running: boolean;
+  port: number;
+  error: string | null;
+}
+
 export interface RecommendationItem {
   key: string;
   value: string;

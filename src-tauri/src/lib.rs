@@ -1,3 +1,4 @@
+mod api_server;
 mod binary;
 mod config;
 mod files;
@@ -57,11 +58,13 @@ pub fn run() {
             monitor::get_metrics_cmd,
             files::save_text_file_cmd,
             recommend::recommend_cmd,
+            api_server::api_status_cmd,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
             tray::create_tray(&handle, &setup_state)?;
             single_instance::start_focus_listener(handle);
+            api_server::sync_server(Arc::clone(&setup_state));
             Ok(())
         })
         .build(tauri::generate_context!())
