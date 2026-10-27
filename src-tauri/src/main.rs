@@ -2,5 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
+    if perch_lib::try_run_cli() {
+        return;
+    }
     perch_lib::run()
 }

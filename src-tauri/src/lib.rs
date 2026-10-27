@@ -1,5 +1,6 @@
 mod api_server;
 mod binary;
+mod cli;
 mod config;
 mod files;
 mod monitor;
@@ -14,6 +15,12 @@ mod tray;
 use std::sync::Arc;
 
 use tauri::Manager;
+
+/// 若以 `--cli` 参数启动，执行 CLI 并结束进程；返回 false 表示继续启动 GUI。
+pub fn try_run_cli() -> bool {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    cli::try_run(&args)
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
