@@ -46,6 +46,7 @@ interface StoreValue {
   refreshBinary: () => Promise<void>;
   setBinary: (b: BinaryInfo | null) => void;
   start: (profile?: Profile) => Promise<boolean>;
+  adopt: (profile?: Profile) => Promise<boolean>;
   stop: () => Promise<void>;
   restart: () => Promise<void>;
   openWebui: () => Promise<void>;
@@ -284,6 +285,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [toast],
   );
 
+  const adopt = useCallback(
+    async (profile?: Profile) => {
+      const current = cfgRef.current;
+      const target =
+        profile ?? current?.profiles.find((p) => p.name === editingRef.current) ?? null;
+      if (!target) {
+        toast("没有可用的配置", "error");
+        return false;
+      }
+      try {
+        const s = await api.adoptServer(target);
+        setStatus(s);
+        setRunningProfile(target.name);
+        setStartedAt((prev) => prev ?? Date.now());
+        toast(t("dashboard.adopted"), "success");
+        return true;
+      } catch (e) {
+        toast(String(e), "error");
+        return false;
+      }
+    },
+    [t, toast],
+  );
+
   const stop = useCallback(async () => {
     try {
       const s = await api.stopServer();
@@ -348,6 +373,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       refreshBinary,
       setBinary,
       start,
+      adopt,
       stop,
       restart,
       openWebui,
@@ -374,6 +400,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       selectProfile,
       refreshBinary,
       start,
+      adopt,
       stop,
       restart,
       openWebui,

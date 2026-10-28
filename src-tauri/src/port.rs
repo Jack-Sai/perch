@@ -30,7 +30,7 @@ pub fn find_free_port(start: u16) -> Option<u16> {
 }
 
 /// 通过 netstat -ano 查找监听指定端口的 PID。
-fn pid_for_port(port: u16) -> Option<u32> {
+pub(crate) fn pid_for_port(port: u16) -> Option<u32> {
     let output = Command::new("netstat")
         .args(["-ano", "-p", "TCP"])
         .creation_flags(NO_WINDOW)
@@ -49,7 +49,7 @@ fn pid_for_port(port: u16) -> Option<u32> {
     None
 }
 
-fn process_name(pid: u32) -> Option<String> {
+pub(crate) fn process_name(pid: u32) -> Option<String> {
     let mut sys = System::new();
     sys.refresh_processes(
         sysinfo::ProcessesToUpdate::Some(&[Pid::from_u32(pid)]),

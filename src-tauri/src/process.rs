@@ -11,6 +11,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use serde::Serialize;
 use tauri::Emitter;
 use tauri_plugin_notification::NotificationExt;
+use windows_sys::Win32::Foundation::CloseHandle;
+use windows_sys::Win32::System::Threading::{
+    GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+};
 
 use crate::config::{self, Profile, load_config};
 use crate::params::build_args;
@@ -258,6 +262,57 @@ pub fn start_server(
     Ok(ServerStatus::Launching)
 }
 
+/// 判断进程是否仍然存活（不依赖子进程句柄）。
+fn pid_alive(pid: u32) -> bool {
+    unsafe {
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+        if handle == 0 {
+            return false;
+        }
+        let mut code: u32 = 0;
+        let ok = GetExitCodeProcess(handle, &mut code);
+        CloseHandle(handle);
+        ok != 0 && code == 259
+    }
+}
+
+/// 接管已在端口上运行的 llama-server（例如由脚本或其他启动器启动）。
+pub fn adopt_server(
+    app: &tauri::AppHandle,
+    state: &Arc<AppState>,
+    profile: Profile,
+) -> Result<ServerStatus, String> {
+    {
+        let inner = state.inner.lock().unwrap();
+        match inner.status {
+            ServerStatus::Idle | ServerStatus::Error(_) => {}
+            _ => return Err("Perch 已在管理一个运行实例".into()),
+        }
+    }
+    let pid = crate::port::pid_for_port(profile.port)
+        .ok_or_else(|| format!("端口 {} 没有监听进程", profile.port))?;
+    let name = crate::port::process_name(pid).unwrap_or_default();
+    if !name.to_ascii_lowercase().contains("llama") {
+        return Err(format!(
+            "端口 {} 被 {name} (PID {pid}) 占用，不是 llama-server，拒绝接管",
+            profile.port
+        ));
+    }
+    if !check_health(profile.port) {
+        return Err(format!("PID {pid} 未通过 /health 健康检查，无法接管"));
+    }
+    {
+        let mut inner = state.inner.lock().unwrap();
+        inner.status = ServerStatus::Running;
+        inner.child = None;
+        inner.pid = Some(pid);
+        inner.running_profile = Some(profile.name);
+        inner.log_path = None;
+    }
+    emit_status(app, state);
+    Ok(ServerStatus::Running)
+}
+
 /// 停止服务：先优雅等待，超时后强制 kill。
 pub fn stop_server(app: &tauri::AppHandle, state: &Arc<AppState>) -> Result<ServerStatus, String> {
     {
@@ -297,8 +352,13 @@ pub fn stop_server(app: &tauri::AppHandle, state: &Arc<AppState>) -> Result<Serv
                         }
                         _ => false,
                     }
+                } else if pid.map(pid_alive).unwrap_or(false) {
+                    false
                 } else {
                     inner.status = ServerStatus::Idle;
+                    inner.pid = None;
+                    inner.running_profile = None;
+                    inner.log_path = None;
                     true
                 }
             };
@@ -333,9 +393,9 @@ pub fn shutdown_blocking(state: &Arc<AppState>, grace: Duration) {
         let mut inner = state.inner.lock().unwrap();
         (inner.pid, inner.child.take())
     };
-    let Some(mut child) = child.take() else {
+    if child.is_none() && pid.is_none() {
         return;
-    };
+    }
     if let Some(pid) = pid {
         let _ = std::process::Command::new("taskkill")
             .args(["/PID", &pid.to_string(), "/T"])
@@ -344,13 +404,26 @@ pub fn shutdown_blocking(state: &Arc<AppState>, grace: Duration) {
     }
     let start = SystemTime::now();
     while start.elapsed().unwrap_or_default() < grace {
-        if let Ok(Some(_)) = child.try_wait() {
-            return;
+        if let Some(c) = child.as_mut() {
+            if matches!(c.try_wait(), Ok(Some(_))) {
+                return;
+            }
+        } else if let Some(pid) = pid {
+            if !pid_alive(pid) {
+                return;
+            }
         }
         std::thread::sleep(Duration::from_millis(200));
     }
-    let _ = child.kill();
-    let _ = child.wait();
+    if let Some(mut c) = child.take() {
+        let _ = c.kill();
+        let _ = c.wait();
+    } else if let Some(pid) = pid {
+        let _ = std::process::Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .creation_flags(NO_WINDOW)
+            .output();
+    }
 }
 
 /// 读取当前状态。
@@ -367,6 +440,15 @@ pub fn start_server_cmd(
     profile: Profile,
 ) -> Result<ServerStatus, String> {
     start_server(&app, state.inner(), profile)
+}
+
+#[tauri::command]
+pub fn adopt_server_cmd(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+    profile: Profile,
+) -> Result<ServerStatus, String> {
+    adopt_server(&app, state.inner(), profile)
 }
 
 #[tauri::command]

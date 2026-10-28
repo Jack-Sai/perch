@@ -44,6 +44,8 @@ const zh: Dict = {
   "action.dismiss": "忽略",
   "action.continue": "继续",
   "action.forceStart": "仍然启动",
+  "action.adopt": "接管实例",
+  "dashboard.adopted": "已接管现有 llama-server 实例",
   "action.openLog": "查看日志",
   "action.detectPort": "检测可用端口",
 
@@ -314,6 +316,8 @@ const en: Dict = {
   "action.dismiss": "Dismiss",
   "action.continue": "Continue",
   "action.forceStart": "Start anyway",
+  "action.adopt": "Adopt instance",
+  "dashboard.adopted": "Adopted the existing llama-server instance",
   "action.openLog": "View log",
   "action.detectPort": "Find free port",
 

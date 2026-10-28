@@ -28,6 +28,7 @@
 - 会话日志：查看、复制、导出、保留期自动清理，兼容非 UTF-8 输出。
 - 系统托盘：状态图标（灰/绿/红）、状态感知菜单、启动/停止、配置切换、打开窗口与 Web UI。
 - 单实例：全局互斥量 + 命名管道聚焦，重复启动不产生第二个守护进程。
+- 遗留实例接管：端口上已有 llama-server 且通过 `/health` 时，可直接接管并继续监控与停止。
 - 本地只读 API：`/status`、`/metrics`、`/profiles`，仅绑定 `127.0.0.1`，可选 Bearer Token，环境变量掩码。
 - CLI：`--cli status|start|stop|export`，通过命名管道与 GUI 通信，JSON 输出。
 - 基于 GGUF 元数据与 GPU 显存的推荐参数（`-ngl`、`-c`、`-t`、`--flash-attn`）。

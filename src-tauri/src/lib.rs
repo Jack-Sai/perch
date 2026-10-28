@@ -59,6 +59,7 @@ pub fn run() {
             params::build_command_cmd,
             params::export_bat_cmd,
             process::start_server_cmd,
+            process::adopt_server_cmd,
             process::stop_server_cmd,
             process::get_server_status_cmd,
             process::read_server_log_cmd,

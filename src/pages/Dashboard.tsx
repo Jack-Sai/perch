@@ -108,6 +108,7 @@ export function Dashboard() {
     binary,
     selectProfile,
     start,
+    adopt,
     stop,
     restart,
     openWebui,
@@ -263,6 +264,17 @@ export function Dashboard() {
       setBusy(false);
     }
   }, [binary, editingProfile, start, t, toast]);
+
+  const adoptCurrent = async () => {
+    if (!editingProfile) return;
+    setBusy(true);
+    try {
+      const ok = await adopt({ ...editingProfile, port: portInfo?.port ?? editingProfile.port });
+      if (ok) setPortInfo(null);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const startWithPort = async (port: number) => {
     if (!editingProfile) return;
@@ -828,6 +840,11 @@ export function Dashboard() {
             {freePort && (
               <Button onClick={() => void startWithPort(freePort)}>
                 {t("action.continue")} :{freePort}
+              </Button>
+            )}
+            {portInfo?.process_name?.toLowerCase().includes("llama") && (
+              <Button onClick={() => void adoptCurrent()} disabled={busy}>
+                {t("action.adopt")}
               </Button>
             )}
             <Button

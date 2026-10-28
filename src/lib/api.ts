@@ -37,6 +37,7 @@ export const api = {
   exportBat: (profile: Profile, path: string, absolute: boolean) =>
     invoke<void>("export_bat_cmd", { profile, path, absolute }),
   startServer: (profile: Profile) => invoke<ServerStatus>("start_server_cmd", { profile }),
+  adoptServer: (profile: Profile) => invoke<ServerStatus>("adopt_server_cmd", { profile }),
   stopServer: () => invoke<ServerStatus>("stop_server_cmd"),
   getServerStatus: () => invoke<ServerStatus>("get_server_status_cmd"),
   readServerLog: (tail: number) => invoke<string[]>("read_server_log_cmd", { tail }),
