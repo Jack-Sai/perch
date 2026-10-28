@@ -3,6 +3,7 @@ import type {
   ApiStatus,
   AppConfig,
   BinaryInfo,
+  GpuEntry,
   CommandPreview,
   Metrics,
   Profile,
@@ -41,6 +42,7 @@ export const api = {
   readServerLog: (tail: number) => invoke<string[]>("read_server_log_cmd", { tail }),
   exportServerLog: (path: string) => invoke<void>("export_server_log_cmd", { path }),
   getMetrics: () => invoke<Metrics>("get_metrics_cmd"),
+  listGpus: () => invoke<GpuEntry[]>("list_gpus_cmd"),
 
   checkPort: (port: number) => invoke<PortStatus>("check_port_cmd", { port }),
   findFreePort: (start: number) => invoke<number>("find_free_port_cmd", { start }),

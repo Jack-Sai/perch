@@ -48,7 +48,7 @@ Perch는 llama.cpp를 포함하거나 배포하지 않습니다. 사용자의 `l
 
 ### 모니터링과 진단
 
-대시보드는 기본 1초 간격, 5분 창으로 샘플링합니다. GPU 정보는 `nvidia-smi`에서 가져오며 NVIDIA GPU가 없으면 CPU 모드로 동작합니다. 실행 실패 시 진단 결과, 전체 명령줄, 로그 마지막 부분을 보여줍니다.
+대시보드는 기본 1초 간격, 5분 창으로 샘플링합니다. GPU 정보는 NVML을 우선 사용하고 실패하면 `nvidia-smi`로 대체합니다. 멀티 GPU 환경에서는 설정에서 모니터링할 GPU를 선택할 수 있습니다. NVIDIA GPU가 없으면 CPU 모드로 동작합니다. 실행 실패 시 진단 결과, 전체 명령줄, 로그 마지막 부분을 보여줍니다.
 
 ### 트레이와 종료
 
@@ -122,13 +122,14 @@ cargo clippy
 | axum / tokio | 로컬 읽기 전용 API | MIT |
 | serde / serde_json / toml | 설정과 직렬화 | MIT / Apache-2.0 |
 | sysinfo | 프로세스·메모리 모니터링 | MIT |
+| nvml-wrapper | NVML 기반 GPU 지표 | MIT / Apache-2.0 |
 | windows-sys | Win32 API(명명된 파이프, 뮤텍스, 콘솔) | MIT / Apache-2.0 |
 | React / Vite | 프런트엔드 | MIT |
 | Tailwind CSS | 스타일 | MIT |
 | Recharts | 차트 | MIT |
 | lucide-react | 아이콘 | ISC |
 
-GPU 정보는 시스템 `nvidia-smi`로 읽습니다. Perch는 NVML을 정적 링크하거나 NVIDIA 구성 요소를 배포하지 않습니다. llama.cpp와 모델은 포함되지 않으며 각 라이선스를 준수해야 합니다.
+GPU 정보는 NVML(존재하는 경우 시스템 `nvml.dll`을 런타임 로드)을 우선 사용하고, 실패하면 `nvidia-smi`로 대체합니다. Perch는 NVML을 정적 링크하거나 NVIDIA 구성 요소를 배포하지 않습니다. llama.cpp와 모델은 포함되지 않으며 각 라이선스를 준수해야 합니다.
 
 ## 기여
 

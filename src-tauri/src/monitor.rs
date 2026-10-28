@@ -56,10 +56,40 @@ fn parse_u64(s: &str) -> Option<u64> {
     s.trim().parse::<u64>().ok()
 }
 
-/// 通过 nvidia-smi 查询第一块 GPU。
-fn query_nvidia_smi() -> Option<GpuInfo> {
+fn nvml_instance() -> Option<&'static nvml_wrapper::Nvml> {
+    static NVML: OnceLock<Option<nvml_wrapper::Nvml>> = OnceLock::new();
+    NVML.get_or_init(|| nvml_wrapper::Nvml::init().ok())
+        .as_ref()
+}
+
+/// 优先通过 NVML 查询指定索引的 GPU。
+fn query_nvml(index: u32) -> Option<GpuInfo> {
+    use nvml_wrapper::enum_wrappers::device::TemperatureSensor;
+    let nvml = nvml_instance()?;
+    let device = nvml.device_by_index(index).ok()?;
+    let name = device.name().ok();
+    let util = device.utilization_rates().ok().map(|u| u.gpu as f32);
+    let memory = device.memory_info().ok();
+    let temp = device
+        .temperature(TemperatureSensor::Gpu)
+        .ok()
+        .map(|t| t as f32);
+    Some(GpuInfo {
+        name,
+        util,
+        mem_used: memory.as_ref().map(|m| m.used),
+        mem_total: memory.map(|m| m.total),
+        temp,
+        source: Some("nvml".into()),
+    })
+}
+
+/// 通过 nvidia-smi 查询指定索引的 GPU。
+fn query_nvidia_smi(index: u32) -> Option<GpuInfo> {
     let output = Command::new("nvidia-smi")
         .args([
+            "-i",
+            &index.to_string(),
             "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu",
             "--format=csv,noheader,nounits",
         ])
@@ -86,16 +116,75 @@ fn query_nvidia_smi() -> Option<GpuInfo> {
 }
 
 /// 采集 GPU 信息，带 2 秒缓存以降低 nvidia-smi 调用开销。
-pub(crate) fn gpu_info() -> GpuInfo {
-    static CACHE: OnceLock<Mutex<(std::time::Instant, Option<GpuInfo>)>> = OnceLock::new();
-    let cache = CACHE.get_or_init(|| Mutex::new((std::time::Instant::now(), None)));
+pub(crate) fn gpu_info(index: u32) -> GpuInfo {
+    static CACHE: OnceLock<Mutex<(std::time::Instant, u32, Option<GpuInfo>)>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new((std::time::Instant::now(), u32::MAX, None)));
     let mut guard = cache.lock().unwrap();
-    if guard.0.elapsed().as_secs_f32() < 2.0 {
-        return guard.1.clone().unwrap_or_default();
+    if guard.1 == index && guard.0.elapsed().as_secs_f32() < 2.0 {
+        return guard.2.clone().unwrap_or_default();
     }
-    let info = query_nvidia_smi();
-    *guard = (std::time::Instant::now(), info.clone());
+    let info = query_nvml(index).or_else(|| query_nvidia_smi(index));
+    *guard = (std::time::Instant::now(), index, info.clone());
     info.unwrap_or_default()
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GpuEntry {
+    pub index: u32,
+    pub name: String,
+    pub mem_total_bytes: Option<u64>,
+    pub source: String,
+}
+
+/// 枚举可用 GPU（NVML 优先）。
+#[tauri::command]
+pub fn list_gpus_cmd() -> Vec<GpuEntry> {
+    if let Some(nvml) = nvml_instance() {
+        if let Ok(count) = nvml.device_count() {
+            let mut out = Vec::new();
+            for index in 0..count {
+                if let Ok(device) = nvml.device_by_index(index) {
+                    out.push(GpuEntry {
+                        index,
+                        name: device.name().unwrap_or_else(|_| format!("GPU {index}")),
+                        mem_total_bytes: device.memory_info().ok().map(|m| m.total),
+                        source: "nvml".into(),
+                    });
+                }
+            }
+            if !out.is_empty() {
+                return out;
+            }
+        }
+    }
+    let output = Command::new("nvidia-smi")
+        .args([
+            "--query-gpu=index,name,memory.total",
+            "--format=csv,noheader,nounits",
+        ])
+        .creation_flags(NO_WINDOW)
+        .output();
+    let Ok(output) = output else {
+        return vec![];
+    };
+    if !output.status.success() {
+        return vec![];
+    }
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| {
+            let mut cols = line.splitn(3, ',');
+            let index = parse_u64(cols.next()?)?.try_into().ok()?;
+            let name = cols.next()?.trim().to_string();
+            let mem = parse_u64(cols.next()?).map(|m| m * 1024 * 1024);
+            Some(GpuEntry {
+                index,
+                name,
+                mem_total_bytes: mem,
+                source: "nvidia-smi".into(),
+            })
+        })
+        .collect()
 }
 
 #[tauri::command]
@@ -144,7 +233,10 @@ pub(crate) fn snapshot(state: &AppState) -> Metrics {
         0.0
     };
 
-    let gpu = gpu_info();
+    let gpu_index = crate::config::load_config()
+        .map(|c| c.global.gpu_index)
+        .unwrap_or(0);
+    let gpu = gpu_info(gpu_index);
     Metrics {
         running: true,
         pid,
@@ -158,5 +250,15 @@ pub(crate) fn snapshot(state: &AppState) -> Metrics {
         gpu_temp_c: gpu.temp,
         gpu_name: gpu.name,
         gpu_source: gpu.source,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gpu_enumeration_does_not_panic() {
+        let _ = list_gpus_cmd();
     }
 }

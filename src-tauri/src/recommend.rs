@@ -220,7 +220,10 @@ pub fn recommend_cmd(profile: Profile) -> Result<Recommendation, String> {
         return Err("请先选择有效的 GGUF 模型文件".into());
     }
     let (meta, file_size) = read_meta(path)?;
-    let gpu = gpu_info();
+    let gpu_index = crate::config::load_config()
+        .map(|c| c.global.gpu_index)
+        .unwrap_or(0);
+    let gpu = gpu_info(gpu_index);
     let vram = gpu.mem_total.unwrap_or(0);
 
     let mut facts = Vec::new();

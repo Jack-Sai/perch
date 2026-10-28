@@ -48,7 +48,7 @@ Perch は llama.cpp を同梱・配布しません。お手持ちの `llama-serv
 
 ### 監視と診断
 
-ダッシュボードは既定で 1 秒ごと、5 分間のデータを表示。GPU 情報は `nvidia-smi` から取得し、NVIDIA GPU が無い場合は CPU モードになります。起動失敗時は診断結果、完全なコマンドライン、ログ末尾を表示します。
+ダッシュボードは既定で 1 秒ごと、5 分間のデータを表示。GPU 情報は NVML を優先し、失敗時は `nvidia-smi` にフォールバックします。マルチ GPU 環境では設定で監視対象を選択できます。NVIDIA GPU が無い場合は CPU モードになります。起動失敗時は診断結果、完全なコマンドライン、ログ末尾を表示します。
 
 ### トレイと終了
 
@@ -122,13 +122,14 @@ cargo clippy
 | axum / tokio | ローカル読み取り専用 API | MIT |
 | serde / serde_json / toml | 設定とシリアライズ | MIT / Apache-2.0 |
 | sysinfo | プロセス・メモリ監視 | MIT |
+| nvml-wrapper | NVML による GPU 指標 | MIT / Apache-2.0 |
 | windows-sys | Win32 API（名前付きパイプ、ミューテックス、コンソール） | MIT / Apache-2.0 |
 | React / Vite | フロントエンド | MIT |
 | Tailwind CSS | スタイル | MIT |
 | Recharts | グラフ | MIT |
 | lucide-react | アイコン | ISC |
 
-GPU 情報はシステムの `nvidia-smi` から取得します。NVML の静的リンクや NVIDIA コンポーネントの同梱は行いません。llama.cpp とモデルは同梱されません。各ライセンスを遵守してください。
+GPU 情報は NVML（存在すればシステムの `nvml.dll` を実行時ロード）を優先し、失敗時は `nvidia-smi` を使用します。NVML の静的リンクや NVIDIA コンポーネントの同梱は行いません。llama.cpp とモデルは同梱されません。各ライセンスを遵守してください。
 
 ## コントリビューション
 

@@ -12,7 +12,7 @@ Perch 不捆绑、不分发 llama.cpp。你只需提供自己的 `llama-server.e
 - **多配置方案**：每套模型独立保存 host/port/`-ngl`/线程/上下文/额外参数/环境变量/工作目录，支持 TOML 导入导出（可脱敏模型路径）。
 - **智能推荐**：解析 GGUF 元数据（架构、量化、训练上下文、层数）并结合 GPU 显存，一键应用 `-ngl`、`-c`、`-t`、`--flash-attn` 建议。
 - **可靠启动**：无黑窗启动，等待 `/health` 通过后才判定成功；启动失败自动区分端口占用、显存不足、模型损坏、参数非法、权限不足等原因。
-- **实时监控**：进程 CPU / 内存工作集 / GPU 利用率 / 显存 / 温度趋势，阈值告警，数据可导出 CSV / JSON。
+- **实时监控**：进程 CPU / 内存工作集 / GPU 利用率 / 显存 / 温度趋势，多 GPU 选择，阈值告警，数据可导出 CSV / JSON。
 - **日志**：按会话分隔日志，支持查看、复制与导出，自动清理过期日志。
 - **托盘常驻**：状态感知菜单，直接启动/停止、切换配置、打开 Web UI；关闭窗口可隐藏到托盘。
 - **单实例**：重复启动会聚焦已有窗口，避免多个守护进程争抢端口。
@@ -48,7 +48,7 @@ Perch 不捆绑、不分发 llama.cpp。你只需提供自己的 `llama-server.e
 
 ### 监控与诊断
 
-仪表盘每 N 秒采样（默认 1 秒，窗口 5 分钟）。GPU 指标优先通过 `nvidia-smi` 获取，未检测到 NVIDIA GPU 时自动进入 CPU 模式。启动失败时展示诊断结论、完整命令行与日志尾部。
+仪表盘每 N 秒采样（默认 1 秒，窗口 5 分钟）。GPU 指标优先通过 NVML 获取，失败时回退 `nvidia-smi`；多卡环境可在设置中选择监控的 GPU，未检测到 NVIDIA GPU 时自动进入 CPU 模式。启动失败时展示诊断结论、完整命令行与日志尾部。
 
 ### 托盘与关闭行为
 
@@ -122,13 +122,14 @@ cargo clippy
 | axum / tokio | 本地只读 API | MIT |
 | serde / serde_json / toml | 配置与序列化 | MIT / Apache-2.0 |
 | sysinfo | 进程与内存监控 | MIT |
+| nvml-wrapper | 通过 NVML 读取 GPU 指标 | MIT / Apache-2.0 |
 | windows-sys | Win32 API（命名管道、互斥量、控制台） | MIT / Apache-2.0 |
 | React / Vite | 前端 | MIT |
 | Tailwind CSS | 样式 | MIT |
 | Recharts | 图表 | MIT |
 | lucide-react | 图标 | ISC |
 
-GPU 数据通过系统 `nvidia-smi` 获取；Perch 不静态链接 NVML，也不分发 NVIDIA 驱动组件。llama.cpp 及其模型不随本项目分发，相关许可证由用户自行遵守。
+GPU 数据优先通过 NVML（运行时加载系统 `nvml.dll`，若存在）获取，失败时回退系统 `nvidia-smi`；Perch 不静态链接 NVML，也不分发 NVIDIA 驱动组件。llama.cpp 及其模型不随本项目分发，相关许可证由用户自行遵守。
 
 ## 贡献
 

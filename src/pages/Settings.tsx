@@ -40,6 +40,9 @@ export function Settings() {
   const [autoStartActual, setAutoStartActual] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const [apiStatus, setApiStatus] = useState<ApiStatus | null>(null);
+  const [gpus, setGpus] = useState<
+    { index: number; name: string; mem_total_bytes: number | null }[]
+  >([]);
 
   useEffect(() => {
     isEnabled()
@@ -49,6 +52,10 @@ export function Settings() {
       .apiStatus()
       .then(setApiStatus)
       .catch(() => setApiStatus(null));
+    api
+      .listGpus()
+      .then(setGpus)
+      .catch(() => setGpus([]));
   }, []);
 
   if (!cfg) return <div className="p-6 text-sm text-muted-foreground">{t("misc.loading")}</div>;
@@ -290,6 +297,25 @@ export function Settings() {
                 }
               />
             </div>
+            {gpus.length > 0 && (
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="gpu-index">{t("settings.gpuIndex")}</Label>
+                <Select
+                  id="gpu-index"
+                  value={String(g.gpu_index)}
+                  onChange={(e) => updateGlobal({ gpu_index: Number(e.target.value) || 0 })}
+                >
+                  {gpus.map((gpu) => (
+                    <option key={gpu.index} value={gpu.index}>
+                      #{gpu.index} {gpu.name}
+                      {gpu.mem_total_bytes
+                        ? ` · ${(gpu.mem_total_bytes / 1024 / 1024 / 1024).toFixed(1)} GiB`
+                        : ""}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
             <div className="sm:col-span-2 mt-1 text-xs font-medium text-muted-foreground">
               {t("settings.thresholds")}
             </div>

@@ -17,6 +17,14 @@ export interface GlobalConfig {
   alert_gpu_util_percent: number;
   alert_gpu_temp_c: number;
   log_retention_days: number;
+  gpu_index: number;
+}
+
+export interface GpuEntry {
+  index: number;
+  name: string;
+  mem_total_bytes: number | null;
+  source: string;
 }
 
 export interface Profile {

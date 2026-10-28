@@ -12,7 +12,7 @@ Perch does not bundle or distribute llama.cpp. Bring your own `llama-server.exe`
 - **Multiple profiles**: per-model host/port/`-ngl`/threads/context/extra args/env/workdir, with TOML import/export (model path can be masked).
 - **Recommendations**: parse GGUF metadata (architecture, quantization, trained context, layer count) with GPU VRAM to suggest `-ngl`, `-c`, `-t`, and `--flash-attn` in one click.
 - **Reliable launch**: no console window; success only after `/health` passes; failures classified as port conflict, out of VRAM, invalid model, bad argument, permission, and more.
-- **Live monitoring**: CPU, working set, GPU utilization, VRAM, and temperature trends with configurable alerts; export CSV / JSON.
+- **Live monitoring**: CPU, working set, GPU utilization, VRAM, and temperature trends, multi-GPU selection, configurable alerts, and CSV / JSON export.
 - **Logs**: one file per session, view/copy/export, automatic retention cleanup.
 - **Tray**: status-aware menu to start/stop, switch profiles, and open the Web UI; close-to-tray supported.
 - **Single instance**: relaunching focuses the existing window instead of spawning a second daemon.
@@ -48,7 +48,7 @@ Each profile maps one model to one set of options. Imported profiles with duplic
 
 ### Monitoring and diagnosis
 
-The dashboard samples every N seconds (default 1s, 5-minute window). GPU metrics come from `nvidia-smi`; without an NVIDIA GPU Perch runs in CPU mode. On failure you get a diagnosis, the full command line, and the log tail.
+The dashboard samples every N seconds (default 1s, 5-minute window). GPU metrics come from NVML when available and fall back to `nvidia-smi`; on multi-GPU systems you can pick the monitored GPU in Settings. Without an NVIDIA GPU Perch runs in CPU mode. On failure you get a diagnosis, the full command line, and the log tail.
 
 ### Tray and close behavior
 
@@ -122,13 +122,14 @@ Main dependencies (full lists in `src-tauri/Cargo.lock` and `pnpm-lock.yaml`):
 | axum / tokio | Local read-only API | MIT |
 | serde / serde_json / toml | Config and serialization | MIT / Apache-2.0 |
 | sysinfo | Process and memory monitoring | MIT |
+| nvml-wrapper | GPU metrics via NVML | MIT / Apache-2.0 |
 | windows-sys | Win32 APIs (named pipe, mutex, console) | MIT / Apache-2.0 |
 | React / Vite | Frontend | MIT |
 | Tailwind CSS | Styling | MIT |
 | Recharts | Charts | MIT |
 | lucide-react | Icons | ISC |
 
-GPU data is read via the system `nvidia-smi`; Perch does not statically link NVML or ship NVIDIA components. llama.cpp and models are not distributed with this project; comply with their respective licenses.
+GPU data is read via NVML (loading the system `nvml.dll` at runtime when present), with `nvidia-smi` as fallback; Perch does not statically link NVML or ship NVIDIA components. llama.cpp and models are not distributed with this project; comply with their respective licenses.
 
 ## Contributing
 

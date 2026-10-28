@@ -51,6 +51,8 @@ pub struct GlobalConfig {
     pub alert_gpu_temp_c: u32,
     /// 启动日志保留天数（0 表示永久保留）
     pub log_retention_days: u32,
+    /// 主监控 GPU 索引（多卡环境）
+    pub gpu_index: u32,
 }
 
 impl Default for GlobalConfig {
@@ -74,6 +76,7 @@ impl Default for GlobalConfig {
             alert_gpu_util_percent: 90,
             alert_gpu_temp_c: 85,
             log_retention_days: 14,
+            gpu_index: 0,
         }
     }
 }

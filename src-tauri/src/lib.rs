@@ -64,6 +64,7 @@ pub fn run() {
             process::read_server_log_cmd,
             process::export_server_log_cmd,
             monitor::get_metrics_cmd,
+            monitor::list_gpus_cmd,
             files::save_text_file_cmd,
             recommend::recommend_cmd,
             api_server::api_status_cmd,
