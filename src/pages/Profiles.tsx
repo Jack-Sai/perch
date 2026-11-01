@@ -8,7 +8,6 @@ import {
   Radio,
   Trash2,
   Upload,
-  CheckCircle2,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useI18n } from "../lib/i18n";
@@ -136,13 +135,21 @@ export function Profiles() {
                 key={p.name}
                 onClick={() => void selectProfile(p.name)}
                 className={cn(
-                  "group cursor-pointer transition-all hover:border-primary/40 hover:shadow-md",
+                  "group relative cursor-pointer overflow-hidden transition-all hover:border-primary/40 hover:shadow-md",
                   isEditing && "border-primary/60 ring-1 ring-primary/30",
                 )}
               >
-                <CardHeader className="flex-row items-start justify-between pb-2">
-                  <div className="min-w-0">
-                    <CardTitle className="flex items-center gap-2 truncate">
+                {(isRunning || isEditing) && (
+                  <span
+                    className={cn(
+                      "absolute inset-y-0 left-0 w-1",
+                      isRunning ? "bg-success" : "bg-primary",
+                    )}
+                  />
+                )}
+                <CardHeader className="flex-row items-start justify-between pb-2 pl-4">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="flex flex-wrap items-center gap-1.5">
                       {p.name}
                       {isEditing && <Badge tone="default">{t("profiles.editing")}</Badge>}
                       {isRunning && (
@@ -151,36 +158,52 @@ export function Profiles() {
                           {t("profiles.running")}
                         </Badge>
                       )}
+                      {isLast && !isRunning && !isEditing && (
+                        <Badge tone="muted">{t("profiles.lastUsed")}</Badge>
+                      )}
                     </CardTitle>
                     <div className="mt-1 truncate text-[11px] text-muted-foreground">
                       {p.model_path ? basename(p.model_path) : t("dashboard.none")}
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    {isLast && <CheckCircle2 className="h-3.5 w-3.5 text-success" />}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteTarget(p.name);
-                      }}
-                      className="rounded p-1 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteTarget(p.name);
+                    }}
+                    className="rounded p-1 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </CardHeader>
-                <CardContent>
-                  <div className="mono flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <span>
+                <CardContent className="pl-4">
+                  <div className="mono flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="rounded bg-muted/60 px-1.5 py-0.5">
                       {p.host}:{p.port}
                     </span>
-                    <span className="text-border">·</span>
-                    <span>-ngl {p.ngl < 0 ? "auto" : p.ngl}</span>
-                    <span className="text-border">·</span>
-                    <span>-c {p.ctx_size || "default"}</span>
+                    <span className="rounded bg-muted/60 px-1.5 py-0.5">
+                      -ngl {p.ngl < 0 ? "auto" : p.ngl}
+                    </span>
+                    <span className="rounded bg-muted/60 px-1.5 py-0.5">
+                      -c {p.ctx_size || "default"}
+                    </span>
+                    <span className="rounded bg-muted/60 px-1.5 py-0.5">
+                      -t {p.threads || "auto"}
+                    </span>
+                    <span
+                      className={cn(
+                        "rounded px-1.5 py-0.5",
+                        p.flash_attn ? "bg-primary/10 text-primary" : "bg-muted/60",
+                      )}
+                    >
+                      {p.flash_attn ? "Flash" : "no FA"}
+                    </span>
                   </div>
                   {p.extra_params.trim() && (
-                    <div className="mono mt-1.5 truncate text-[10px] text-muted-foreground/80">
+                    <div
+                      className="mono mt-1.5 truncate text-[10px] text-muted-foreground/80"
+                      title={p.extra_params}
+                    >
                       {p.extra_params}
                     </div>
                   )}
