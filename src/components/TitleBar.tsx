@@ -33,7 +33,7 @@ export function TitleBar() {
   return (
     <header
       data-tauri-drag-region
-      className="flex h-11 shrink-0 select-none items-center justify-between border-b border-border bg-card/60 pl-4 pr-0 backdrop-blur"
+      className="flex h-11 shrink-0 select-none items-center justify-between border-b border-border bg-card pl-4 pr-0"
     >
       <div className="flex items-center gap-2.5" data-tauri-drag-region>
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
