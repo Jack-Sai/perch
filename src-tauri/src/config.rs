@@ -59,7 +59,7 @@ impl Default for GlobalConfig {
     fn default() -> Self {
         Self {
             language: "zh-CN".into(),
-            theme: "system".into(),
+            theme: "light".into(),
             last_profile: "default".into(),
             autostart: false,
             close_to_tray: true,
