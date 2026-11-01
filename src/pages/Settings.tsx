@@ -316,7 +316,7 @@ export function Settings() {
                 </Select>
               </div>
             )}
-            <div className="sm:col-span-2 mt-1 text-xs font-medium text-muted-foreground">
+            <div className="section-title sm:col-span-2 mt-1">
               {t("settings.thresholds")}
             </div>
             <div className="space-y-1.5">
