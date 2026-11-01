@@ -12,6 +12,7 @@ const zh: Dict = {
   "nav.parameters": "启动参数",
   "nav.profiles": "配置方案",
   "nav.settings": "设置",
+  "nav.section": "导航",
 
   "status.idle": "已停止",
   "status.launching": "启动中",
@@ -85,6 +86,8 @@ const zh: Dict = {
   "dashboard.logExported": "日志已导出",
   "dashboard.startHint": "配置就绪后点击「启动」",
   "dashboard.healthChecking": "正在等待 /health 响应…",
+  "dashboard.environment": "运行环境",
+  "dashboard.source": "监控来源",
 
   "params.title": "启动参数",
   "params.subtitle": "配置 llama-server 启动命令行，实时预览并校验",
@@ -284,6 +287,7 @@ const en: Dict = {
   "nav.parameters": "Parameters",
   "nav.profiles": "Profiles",
   "nav.settings": "Settings",
+  "nav.section": "Navigation",
 
   "status.idle": "Stopped",
   "status.launching": "Launching",
@@ -357,6 +361,8 @@ const en: Dict = {
   "dashboard.logExported": "Log exported",
   "dashboard.startHint": "Configure a profile, then press Start",
   "dashboard.healthChecking": "Waiting for /health response…",
+  "dashboard.environment": "Environment",
+  "dashboard.source": "Source",
 
   "params.title": "Parameters",
   "params.subtitle": "Configure the llama-server command line with live preview and validation",

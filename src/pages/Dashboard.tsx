@@ -45,6 +45,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Dialog } from "../components/ui/dialog";
 import { Select } from "../components/ui/select";
 import { StatusBadge } from "../components/StatusBadge";
+import { StatTile } from "../components/StatTile";
 
 interface Sample {
   t: number;
@@ -55,43 +56,14 @@ interface Sample {
   gpuTemp: number;
 }
 
-function MetricCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  tone,
-  children,
-}: {
-  icon: typeof Cpu;
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: "default" | "warning" | "destructive";
-  children?: React.ReactNode;
-}) {
+function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <Icon className="h-3.5 w-3.5" />
-            {label}
-          </span>
-          {children}
-        </div>
-        <div
-          className={cn(
-            "mt-2 text-xl font-semibold tabular-nums",
-            tone === "warning" && "text-warning",
-            tone === "destructive" && "text-destructive",
-          )}
-        >
-          {value}
-        </div>
-        {sub && <div className="mt-0.5 text-[11px] text-muted-foreground">{sub}</div>}
-      </CardContent>
-    </Card>
+    <div className="min-w-0">
+      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-0.5 truncate text-xs font-medium tabular">{children}</div>
+    </div>
   );
 }
 
@@ -403,11 +375,17 @@ export function Dashboard() {
   const launching = kind === "launching";
   const stopping = kind === "stopping";
 
+  const gpuMemPercent =
+    metrics?.gpu_mem_total_bytes && metrics.gpu_mem_total_bytes > 0
+      ? (metrics.gpu_mem_used_bytes ?? 0) / metrics.gpu_mem_total_bytes * 100
+      : undefined;
+
   return (
-    <div className="animate-fade-in space-y-4 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="animate-fade-in space-y-4 p-5">
+      {/* 头部：标题 + 操作 */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">{t("dashboard.title")}</h1>
+          <h1 className="text-lg font-semibold tracking-tight">{t("dashboard.title")}</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">{t("dashboard.subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -422,7 +400,7 @@ export function Dashboard() {
               </option>
             ))}
           </Select>
-          <div className="mx-1 h-5 w-px bg-border" />
+          <div className="mx-0.5 h-5 w-px bg-border" />
           <Button variant="outline" size="sm" onClick={() => void openWebui()} disabled={!running}>
             <ExternalLink className="h-3.5 w-3.5" />
             {t("action.openWebui")}
@@ -455,13 +433,13 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* 状态概览 */}
+      {/* 控制 / 状态条 */}
       <Card>
-        <CardContent className="flex flex-wrap items-center gap-x-8 gap-y-3 p-4">
-          <div className="flex items-center gap-3">
+        <CardContent className="flex flex-wrap items-center gap-x-7 gap-y-3 p-3.5">
+          <div className="flex items-center gap-2.5">
             <StatusBadge status={status} />
             {statusError(status) && (
-              <span className="max-w-md truncate text-xs text-destructive" title={statusError(status)}>
+              <span className="max-w-xs truncate text-xs text-destructive" title={statusError(status)}>
                 {statusError(status)}
               </span>
             )}
@@ -469,91 +447,103 @@ export function Dashboard() {
               <span className="text-xs text-muted-foreground">{t("dashboard.healthChecking")}</span>
             )}
           </div>
-          <div className="flex items-center gap-6 text-xs">
-            <div>
-              <span className="text-muted-foreground">{t("dashboard.runningProfile")}: </span>
-              <span className="font-medium">{runningProfile ?? t("dashboard.none")}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{t("dashboard.editingProfile")}: </span>
-              <span className="font-medium">{editing || t("dashboard.none")}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{t("dashboard.pid")}: </span>
-              <span className="mono">{pid ?? "—"}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{t("dashboard.uptime")}: </span>
-              <span className="mono tabular-nums">
-                {startedAt ? formatDuration(now - startedAt) : "—"}
-              </span>
-            </div>
-            <div className="mono text-muted-foreground">
+          <div className="h-7 w-px bg-border" />
+          <Fact label={t("dashboard.runningProfile")}>{runningProfile ?? t("dashboard.none")}</Fact>
+          <Fact label={t("dashboard.editingProfile")}>{editing || t("dashboard.none")}</Fact>
+          <Fact label={t("dashboard.pid")}>
+            <span className="mono">{pid ?? "—"}</span>
+          </Fact>
+          <Fact label={t("dashboard.uptime")}>
+            <span className="tabular">{startedAt ? formatDuration(now - startedAt) : "—"}</span>
+          </Fact>
+          <Fact label="URL">
+            <span className="mono">
               {runningProfileObj
                 ? `${runningProfileObj.host}:${runningProfileObj.port}`
                 : editingProfile
                   ? `${editingProfile.host}:${editingProfile.port}`
-                  : ""}
-            </div>
-          </div>
+                  : "—"}
+            </span>
+          </Fact>
         </CardContent>
       </Card>
 
-      {/* 指标卡 */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
+      {/* 指标瓦片网格 */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <StatTile
           icon={Cpu}
           label={t("dashboard.cpu")}
           value={metrics ? formatPercent(metrics.cpu_percent) : "—"}
           sub={t("dashboard.sampleInterval", { n: sampleSeconds })}
-          tone={metrics && metrics.cpu_percent >= cpuAlert ? "warning" : "default"}
+          percent={metrics?.cpu_percent}
+          tone={metrics && metrics.cpu_percent >= cpuAlert ? "warning" : "primary"}
+          alert={!!metrics && metrics.cpu_percent >= cpuAlert}
         />
-        <MetricCard
+        <StatTile
           icon={HardDrive}
           label={t("dashboard.memory")}
           value={metrics ? formatBytes(metrics.mem_bytes) : "—"}
-          sub={t("dashboard.lastMinutes", { n: windowMinutes })}
-        />
-        <MetricCard
-          icon={Gauge}
-          label={t("dashboard.gpu")}
-          value={
-            metrics?.gpu_mem_used_bytes != null
-              ? formatBytes(metrics.gpu_mem_used_bytes)
-              : t("misc.notAvailable")
-          }
           sub={
-            metrics?.gpu_mem_total_bytes != null
-              ? `/ ${formatBytes(metrics.gpu_mem_total_bytes)}`
-              : t("dashboard.cpuOnly")
+            metrics?.mem_total_bytes
+              ? `/ ${formatBytes(metrics.mem_total_bytes)}`
+              : t("dashboard.lastMinutes", { n: windowMinutes })
           }
-        >
-          {gpuAvailable && <Badge tone="muted">{metrics?.gpu_source}</Badge>}
-        </MetricCard>
-        <MetricCard
-          icon={Thermometer}
-          label={t("dashboard.gpuUtil")}
-          value={
-            metrics?.gpu_util_percent != null
-              ? formatPercent(metrics.gpu_util_percent)
-              : t("misc.notAvailable")
-          }
-          sub={
-            metrics?.gpu_temp_c != null
-              ? `${t("dashboard.gpuTemp")} ${metrics.gpu_temp_c}°C`
-              : metrics?.gpu_name ?? t("dashboard.cpuOnly")
-          }
-          tone={
-            metrics?.gpu_util_percent != null && metrics.gpu_util_percent >= gpuAlert
-              ? "warning"
-              : "default"
-          }
+          percent={metrics?.mem_percent}
+          tone={metrics && metrics.mem_percent >= memAlert ? "warning" : "default"}
+          alert={!!metrics && metrics.mem_percent >= memAlert}
         />
+        {gpuAvailable ? (
+          <>
+            <StatTile
+              icon={Gauge}
+              label={t("dashboard.gpuUtil")}
+              value={metrics?.gpu_util_percent != null ? formatPercent(metrics.gpu_util_percent) : "—"}
+              sub={
+                metrics?.gpu_temp_c != null
+                  ? `${t("dashboard.gpuTemp")} ${metrics.gpu_temp_c}°C`
+                  : metrics?.gpu_name ?? ""
+              }
+              percent={metrics?.gpu_util_percent ?? undefined}
+              tone={metrics?.gpu_util_percent != null && metrics.gpu_util_percent >= gpuAlert ? "warning" : "success"}
+              alert={!!metrics?.gpu_util_percent && metrics.gpu_util_percent >= gpuAlert}
+            />
+            <StatTile
+              icon={HardDrive}
+              label={t("dashboard.gpu")}
+              value={metrics?.gpu_mem_used_bytes != null ? formatBytes(metrics.gpu_mem_used_bytes) : "—"}
+              sub={
+                metrics?.gpu_mem_total_bytes != null
+                  ? `/ ${formatBytes(metrics.gpu_mem_total_bytes)}`
+                  : ""
+              }
+              percent={gpuMemPercent}
+              tone="success"
+            />
+            <StatTile
+              icon={Thermometer}
+              label={t("dashboard.gpuTemp")}
+              value={metrics?.gpu_temp_c != null ? `${metrics.gpu_temp_c}°C` : "—"}
+              sub={metrics?.gpu_name ?? t("dashboard.cpuOnly")}
+              percent={
+                metrics?.gpu_temp_c != null
+                  ? Math.min(100, (metrics.gpu_temp_c / (tempAlert * 1.25)) * 100)
+                  : undefined
+              }
+              tone={metrics?.gpu_temp_c != null && metrics.gpu_temp_c >= tempAlert ? "destructive" : "info"}
+              alert={!!metrics?.gpu_temp_c && metrics.gpu_temp_c >= tempAlert}
+            />
+          </>
+        ) : (
+          <div className="col-span-2 flex items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-3 text-xs text-muted-foreground md:col-span-3 xl:col-span-3">
+            <Cpu className="mr-1.5 h-4 w-4" />
+            {t("dashboard.cpuOnly")}
+          </div>
+        )}
       </div>
 
-      {/* 告警 */}
+      {/* 告警 + 导出 */}
       <Card>
-        <CardContent className="flex items-center gap-2 p-3 text-xs">
+        <CardContent className="flex items-center gap-2 p-2.5 text-xs">
           {alerts.length === 0 ? (
             <>
               <Activity className="h-3.5 w-3.5 text-success" />
@@ -593,13 +583,45 @@ export function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* 运行环境 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("dashboard.environment")}</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-x-8 gap-y-2.5 p-3.5 pt-0 sm:grid-cols-2">
+          <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-2">
+            <span className="text-xs text-muted-foreground">{t("params.backend")}</span>
+            <span className="flex items-center gap-1.5 text-xs font-medium">
+              {binary?.backend ?? "—"}
+              {binary?.backend && <Badge tone="success">{binary.backend}</Badge>}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-2">
+            <span className="text-xs text-muted-foreground">{t("params.version")}</span>
+            <span className="mono truncate text-xs">{binary?.version ?? "—"}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-2">
+            <span className="shrink-0 text-xs text-muted-foreground">{t("params.model")}</span>
+            <span className="mono truncate text-xs" title={editingProfile?.model_path}>
+              {editingProfile?.model_path || "—"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-2">
+            <span className="text-xs text-muted-foreground">{t("dashboard.source")}</span>
+            <span className="mono truncate text-xs">
+              {metrics?.gpu_source ?? (binary ? `${t("params.backend")} · ${binary.backend}` : "—")}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 趋势图 */}
       <div className="grid gap-3 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>{t("dashboard.cpu")} · {t("dashboard.trend")}</CardTitle>
           </CardHeader>
-          <CardContent className="h-48">
+          <CardContent className="h-44">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
@@ -638,7 +660,7 @@ export function Dashboard() {
           <CardHeader>
             <CardTitle>{t("dashboard.memory")} · {t("dashboard.trend")}</CardTitle>
           </CardHeader>
-          <CardContent className="h-48">
+          <CardContent className="h-44">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
@@ -679,7 +701,7 @@ export function Dashboard() {
           <CardHeader>
             <CardTitle>{t("dashboard.gpuUtil")} · {t("dashboard.trend")}</CardTitle>
           </CardHeader>
-          <CardContent className="h-44">
+          <CardContent className="h-40">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
