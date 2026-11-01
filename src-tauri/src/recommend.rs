@@ -375,4 +375,22 @@ mod tests {
         assert_eq!(quant_name(Some(999)).as_deref(), Some("FT999"));
         assert_eq!(quant_name(None), None);
     }
+
+    #[test]
+    fn recommends_from_synthetic_file() {
+        let path = std::env::temp_dir().join(format!(
+            "perch-rec-{}.gguf",
+            std::process::id()
+        ));
+        std::fs::write(&path, synthetic()).expect("write gguf");
+        let mut profile = Profile::default();
+        profile.model_path = path.display().to_string();
+        let result = recommend_cmd(profile);
+        let _ = std::fs::remove_file(&path);
+        let rec = result.expect("recommendation");
+        assert!(!rec.facts.is_empty());
+        let keys: Vec<&str> = rec.items.iter().map(|i| i.key.as_str()).collect();
+        assert!(keys.contains(&"ctx_size"));
+        assert!(keys.contains(&"threads"));
+    }
 }
